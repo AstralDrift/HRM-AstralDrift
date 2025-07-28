@@ -32,7 +32,11 @@
    - C++, Go, Java, JavaScript, Python, Rust
    - Diff-based code editing (search-replace operations)
    - Target: >80% success rate across all languages
-6. **CLI & Tool Use** - Development workflow automation
+6. **SWE-bench** - Real-world GitHub issue resolution
+   - 2,294 software engineering problems from 12 popular Python repositories
+   - Multi-file patch generation for bug fixes and feature implementations
+   - Current SOTA: 75%+ (TRAE, Claude 4), Target: >60% success rate with <100M parameters
+7. **CLI & Tool Use** - Development workflow automation
    - Git operations, package managers, build systems, debugging tools
    - Multi-step complex development workflows
 
@@ -41,6 +45,7 @@
 #### Performance Targets
 - **LiveCodeBench**: Top-3 performance with <100M parameters
 - **Polyglot**: >80% success rate across all 6 languages
+- **SWE-bench**: >60% success rate with efficient long-context processing (competing with Claude 4 Sonnet's 72.7%)
 - **Local Deployment**: <2GB memory usage, <1s per problem on consumer hardware
 - **Quantization**: <5% performance loss at 4-bit quantization
 
@@ -102,6 +107,7 @@ OMP_NUM_THREADS=8 torchrun --nproc-per-node 8 pretrain.py data_path=data/arc-2-a
 - `RESEARCH_NOTES.md` - Ongoing findings and technical insights
 - `LIVECODEBENCH_ANALYSIS.md` - Detailed LiveCodeBench requirements
 - `POLYGLOT_ANALYSIS.md` - Multi-language benchmark analysis
+- `SWE_BENCH_ANALYSIS.md` - Real-world software engineering benchmark analysis
 
 ### Project Management
 - `TODO_TRACKER.md` - Current sprint and task management
