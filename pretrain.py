@@ -260,6 +260,18 @@ def train_batch(config: PretrainConfig, train_state: TrainState, batch: Any, glo
             reduced_metrics = {f"train/{k}": v / (global_batch_size if k.endswith("loss") else count) for k, v in reduced_metrics.items()}
 
             reduced_metrics["train/lr"] = lr_this_step
+            
+            # SWE-Search self-evolution trigger
+            if (train_state.step % 100 == 0) and hasattr(train_state.model, 'evolve_swe_search_parameters'):
+                train_state.model.evolve_swe_search_parameters()
+                
+                # Log search statistics
+                if hasattr(train_state.model, 'get_swe_search_statistics'):
+                    search_stats = train_state.model.get_swe_search_statistics()
+                    if search_stats:
+                        for key, value in search_stats.items():
+                            reduced_metrics[f"swe_search/{key}"] = value
+            
             return reduced_metrics
 
 

@@ -55,6 +55,22 @@ class HierarchicalReasoningModel_ACTV1Config(BaseModel):
     halt_exploration_prob: float
 
     forward_dtype: str = "bfloat16"
+    
+    # SWE-Search Integration
+    enable_swe_search: bool = False
+    swe_search_iterations: int = 3
+    multi_agent_debate_rounds: int = 2
+    mcts_exploration_factor: float = 1.4
+    
+    # Self-evolution parameters
+    enable_self_evolution: bool = False
+    performance_buffer_size: int = 100
+    evolution_threshold: float = 0.95
+    
+    # Reverse Learning Integration
+    enable_reverse_learning: bool = False
+    reverse_feedback_weight: float = 0.1
+    reverse_learning_consistency_weight: float = 0.5
 
 
 class HierarchicalReasoningModel_ACTV1Block(nn.Module):
@@ -142,6 +158,18 @@ class HierarchicalReasoningModel_ACTV1_Inner(nn.Module):
         with torch.no_grad():
             self.q_head.weight.zero_()
             self.q_head.bias.fill_(-5)  # type: ignore
+            
+        # SWE-Search Integration
+        if self.config.enable_swe_search:
+            from .swe_search_integration import SWESearchController
+            self.swe_search_controller = SWESearchController(self.config)
+            self._search_metrics = []  # Store search metrics for training
+            
+        # Reverse Learning Integration
+        if self.config.enable_reverse_learning:
+            from .reverse_learning import ReverseLearningModule
+            self.reverse_learning = ReverseLearningModule(self.config)
+            self._reverse_metrics = []  # Store reverse learning metrics for training
 
     def _input_embeddings(self, input: torch.Tensor, puzzle_identifiers: torch.Tensor):
         # Token embedding
@@ -203,9 +231,42 @@ class HierarchicalReasoningModel_ACTV1_Inner(nn.Module):
         z_L = self.L_level(z_L, z_H + input_embeddings, **seq_info)
         z_H = self.H_level(z_H, z_L, **seq_info)
 
-        # LM Outputs
-        new_carry = HierarchicalReasoningModel_ACTV1InnerCarry(z_H=z_H.detach(), z_L=z_L.detach())  # New carry no grad
-        output = self.lm_head(z_H)[:, self.puzzle_emb_len:]
+        # Reverse Learning Integration - refine high-level planning based on implementation insights
+        z_H_refined = z_H
+        reverse_metrics = None
+        if self.config.enable_reverse_learning and hasattr(self, 'reverse_learning'):
+            z_H_refined, reverse_metrics = self.reverse_learning(z_H, z_L)
+            
+            # Store reverse learning metrics for training and monitoring
+            if hasattr(self, '_reverse_metrics') and reverse_metrics is not None:
+                self._reverse_metrics.append(reverse_metrics)
+
+        # LM Outputs - use refined high-level states if reverse learning is enabled
+        new_carry = HierarchicalReasoningModel_ACTV1InnerCarry(z_H=z_H_refined.detach(), z_L=z_L.detach())  # New carry no grad
+        output = self.lm_head(z_H_refined)[:, self.puzzle_emb_len:]
+
+        # SWE-Search Enhancement
+        if self.config.enable_swe_search and hasattr(self, 'swe_search_controller'):
+            # Apply SWE-Search refinement using hierarchical embeddings (with reverse learning if enabled)
+            problem_context = input_embeddings  # Use input embeddings as problem context
+            solution_embedding = z_H_refined[:, self.puzzle_emb_len:]  # High-level solution representation (potentially refined)
+            
+            # Apply search-based refinement
+            refined_solution_embedding, search_metrics = self.swe_search_controller.swe_search_forward(
+                problem_embedding=problem_context,
+                base_solution_embedding=solution_embedding
+            )
+            
+            # Convert refined embedding back to output logits
+            refined_output = self.lm_head(refined_solution_embedding)
+            
+            # Use refined output if search was successful, otherwise fallback to base
+            if search_metrics.final_score > 0.5:  # Success threshold
+                output = refined_output
+            
+            # Store search metrics for training and monitoring
+            if hasattr(self, '_search_metrics'):
+                self._search_metrics.append(search_metrics)
 
         # Q head
         q_logits = self.q_head(z_H[:, 0]).to(torch.float32)
@@ -224,6 +285,39 @@ class HierarchicalReasoningModel_ACTV1(nn.Module):
     @property
     def puzzle_emb(self):
         return self.inner.puzzle_emb
+    
+    def get_swe_search_statistics(self):
+        """Get SWE-Search performance statistics"""
+        if hasattr(self.inner, 'swe_search_controller'):
+            return self.inner.swe_search_controller.get_search_statistics()
+        return {}
+    
+    def evolve_swe_search_parameters(self):
+        """Trigger SWE-Search parameter evolution"""
+        if hasattr(self.inner, 'swe_search_controller'):
+            self.inner.swe_search_controller.evolve_search_parameters()
+    
+    def get_latest_search_metrics(self):
+        """Get the latest search metrics for training"""
+        if hasattr(self.inner, '_search_metrics'):
+            metrics = self.inner._search_metrics.copy()
+            self.inner._search_metrics.clear()  # Clear after retrieval
+            return metrics
+        return []
+    
+    def get_reverse_learning_statistics(self):
+        """Get reverse learning performance statistics"""
+        if hasattr(self.inner, 'reverse_learning'):
+            return self.inner.reverse_learning.get_reverse_learning_statistics()
+        return {}
+    
+    def get_latest_reverse_metrics(self):
+        """Get the latest reverse learning metrics for training"""
+        if hasattr(self.inner, '_reverse_metrics'):
+            metrics = self.inner._reverse_metrics.copy()
+            self.inner._reverse_metrics.clear()  # Clear after retrieval
+            return metrics
+        return []
 
     def initial_carry(self, batch: Dict[str, torch.Tensor]):
         batch_size = batch["inputs"].shape[0]

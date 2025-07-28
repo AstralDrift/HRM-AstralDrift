@@ -8,6 +8,7 @@ import torch.distributed as dist
 import pydantic
 from omegaconf import OmegaConf
 from pretrain import PretrainConfig, init_train_state, evaluate, create_dataloader
+from swe_search_evaluator import create_swe_search_evaluator
 
 
 class EvalConfig(pydantic.BaseModel):
@@ -58,10 +59,37 @@ def launch():
     print ("Starting evaluation")
     
     train_state.model.eval()
+    
+    # Standard evaluation
     metrics = evaluate(config, train_state, eval_loader, eval_metadata, rank=RANK, world_size=WORLD_SIZE)
 
     if metrics is not None:
-        print (metrics)
+        print("Standard Evaluation Results:")
+        print(metrics)
+    
+    # SWE-Search enhanced evaluation (if enabled)
+    if getattr(config.arch, 'enable_swe_search', False) and RANK == 0:
+        print("\nStarting SWE-Search Enhanced Evaluation")
+        
+        # Create SWE-Search evaluator
+        swe_evaluator = create_swe_search_evaluator(train_state.model, config.arch, device='cuda')
+        
+        # Run comprehensive evaluation
+        swe_results = swe_evaluator.evaluate_with_swe_search(
+            eval_loader,
+            compare_baseline=True,
+            save_detailed_results=True
+        )
+        
+        # Print performance summary
+        performance_summary = swe_evaluator.get_performance_summary()
+        if performance_summary:
+            print(f"\nSWE-Search Performance Summary:")
+            for key, value in performance_summary.items():
+                print(f"  {key}: {value}")
+    
+    elif getattr(config.arch, 'enable_swe_search', False):
+        print("SWE-Search evaluation skipped on non-zero rank")
 
 
 if __name__ == "__main__":
