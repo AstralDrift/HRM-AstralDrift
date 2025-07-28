@@ -136,6 +136,24 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+venv_py310/bin/
+venv_py310/lib/
+venv_py310/share/
+venv_py310/include/
+
+# External repositories (cloned for integration)
+SWE-smith/
+SWE-ReX/
+LiveCodeBench/
+aider/
+polyglot-benchmark/
+
+# Claude temporary files
+.claude/
+
+# Temporary test files
+test_multi_agent.py
+simple_test.py
 
 # Spyder project settings
 .spyderproject

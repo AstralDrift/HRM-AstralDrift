@@ -19,6 +19,33 @@
 
 ## Phase 1: Foundation & Architecture (Priority: Critical)
 
+### 1.0 Research Integration & Breakthrough Implementation
+
+#### Task 1.0.1: Implement Self-Evolving Agents (SWE-Search Framework) - IMMEDIATE PRIORITY
+**Effort:** L | **Skills:** ARCH, RESEARCH | **Timeline:** Weeks 1-4
+**Description:** Implement Monte Carlo Tree Search + iterative refinement with multi-agent debate for immediate 23% performance gains
+**Deliverables:**
+- `models/hrm/swe_search_integration.py` - SWE-Search controller implementation
+- MCTS expansion logic integrated with HRM's ACT mechanism
+- Multi-agent debate coordination using existing SWE-ReX infrastructure
+- Performance tracking and self-evolution mechanisms
+- Integration with training pipeline and evaluation metrics
+**Dependencies:** None (builds on existing SWE-ReX infrastructure)
+**Success Criteria:** +23% performance improvement on SWE-bench and Polyglot benchmarks
+**Expert Validation:** ✅ Confirmed by ML research, HRM architecture, and training optimization specialists
+
+#### Task 1.0.2: Implement Reverse-Order Learning Integration
+**Effort:** M | **Skills:** ARCH | **Timeline:** Weeks 5-8
+**Description:** Implement bidirectional feedback loops where low-level implementation cycles inform high-level strategic planning
+**Deliverables:**
+- `models/hrm/reverse_learning.py` - Reverse learning module implementation
+- Insight extraction from low-level to high-level feedback mechanisms
+- Integration with main HRM architecture maintaining single forward pass
+- Training methodology modifications for reverse-order sequence learning
+**Dependencies:** 1.0.1
+**Success Criteria:** Enhanced code architecture quality and strategic planning improvements
+**Expert Validation:** ✅ Natural enhancement to hierarchical feedback loops
+
 ### 1.1 Architecture Analysis & Design
 
 #### Task 1.1.1: Analyze Current HRM Architecture for Code Generation
@@ -29,6 +56,7 @@
 - Analyze ACT mechanism suitability for code generation
 - Identify specific modifications needed for code tasks
 - Create architecture comparison table (current vs needed)
+- Integration points for research breakthroughs (SWE-Search, reverse learning)
 **Dependencies:** None
 **Success Criteria:** Complete technical analysis document with specific modification points
 

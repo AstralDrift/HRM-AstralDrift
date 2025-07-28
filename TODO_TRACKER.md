@@ -1,8 +1,8 @@
 # HRM Code Generation Project - TODO Tracker
 
-## Current Sprint: Multi-Agent Architecture Integration
+## Current Sprint: Research Integration & Implementation Planning
 **Sprint Duration**: 2025-07-28 → 2025-08-04  
-**Sprint Goal**: Integrate SWE-smith and SWE-ReX capabilities into HRM architecture and update project roadmap
+**Sprint Goal**: Integrate validated research breakthroughs and create immediate implementation plan
 
 ## Active Tasks (In Progress)
 
@@ -14,12 +14,21 @@
 - [x] Create `RESEARCH_NOTES.md` for ongoing findings
 - [x] Create `TODO_TRACKER.md` for sprint management *(this file)*
 
-### Multi-Agent Architecture Integration ✅ COMPLETED (Current Sprint)
+### Multi-Agent Architecture Integration ✅ COMPLETED (Previous Sprint)
 - [x] Update `HRM_CODE_GENERATION_PLAN.md` with SWE-smith and SWE-ReX integration
 - [x] Update `TASK_BREAKDOWN.md` with new multi-agent tasks
 - [x] Create `SWE_SMITH_INTEGRATION_ANALYSIS.md` with comprehensive integration strategy
 - [x] Create `SWE_REX_MULTI_AGENT_ARCHITECTURE.md` with multi-agent system design
 - [x] Update project success metrics and performance targets
+
+### Research Breakthrough Integration ✅ COMPLETED (Current Sprint)
+- [x] Expert consultation with ML research, HRM architecture, and training optimization specialists
+- [x] Validation of 5 key research breakthroughs for HRM integration
+- [x] Update `HRM_CODE_GENERATION_PLAN.md` with validated research integration section
+- [x] Create `RESEARCH_INTEGRATION_IMPLEMENTATION_PLAN.md` with detailed implementation roadmap
+- [x] Update `TASK_BREAKDOWN.md` with immediate priority tasks (SWE-Search, Reverse Learning)
+- [x] Update `CHANGELOG.md` with comprehensive research findings and next steps
+- [x] Create `EXTERNAL_ASSISTANT_BRIEFING.md` for external collaboration context
 
 ### Project Management Infrastructure ✅ COMPLETED
 - [x] Create `PROGRESS_LOG.md` for completed work tracking
@@ -28,27 +37,34 @@
 - [x] Create `POLYGLOT_ANALYSIS.md` with language-specific requirements
 - [x] Create `SWE_BENCH_ANALYSIS.md` with real-world software engineering benchmark analysis
 
-## Next Sprint: Multi-Agent Foundation Implementation
-**Planned Duration**: 2025-08-04 → 2025-08-11
-**Planned Goal**: Begin implementing SWE-smith and SWE-ReX integration foundations
+## Next Sprint: SWE-Search Framework Implementation (IMMEDIATE PRIORITY)
+**Planned Duration**: 2025-08-04 → 2025-08-18 (Extended 2-week sprint)
+**Planned Goal**: Implement Self-Evolving Agents (SWE-Search) for immediate 23% performance gains
 
-### SWE-smith Infrastructure Setup
-- [ ] **Task 2.4.1**: Clone and setup SWE-smith repository
-- [ ] **Task 2.4.2**: Implement SWE-smith task registry integration
-- [ ] **Task 1.1.6**: Design SWE-smith data infrastructure integration
-- [ ] Validate Docker environment management and task generation
+### SWE-Search Framework Implementation (Weeks 1-2)
+- [ ] **Task 1.0.1**: Implement Self-Evolving Agents (SWE-Search Framework) - IMMEDIATE PRIORITY
+  - [ ] Create `models/hrm/swe_search_integration.py` with SWESearchController class
+  - [ ] Implement MCTS expansion logic with UCB1 scoring
+  - [ ] Add multi-agent debate coordination using attention mechanisms
+  - [ ] Integrate performance tracking and self-evolution logic
+  - [ ] Modify `models/hrm/hrm_act_v1.py` for SWE-Search integration
+  - [ ] Update training pipeline in `pretrain.py` with search loss component
+  - [ ] Add evaluation metrics in `evaluate.py` for search performance tracking
 
-### SWE-ReX Integration Planning
-- [ ] **Task 1.1.5**: Design multi-agent architecture with SWE-ReX integration
-- [ ] **Task 3.4.1**: Implement SWE-ReX runtime integration
-- [ ] Set up basic parallel agent execution capability
-- [ ] Test session management and resource allocation
+### Reverse-Order Learning Foundation (Weeks 3-4)
+- [ ] **Task 1.0.2**: Implement Reverse-Order Learning Integration
+  - [ ] Create `models/hrm/reverse_learning.py` with ReverseLearningModule
+  - [ ] Implement insight extraction from low-level to high-level feedback
+  - [ ] Add reverse projector and gating mechanisms for insight integration
+  - [ ] Modify main HRM forward pass for bidirectional feedback loops
+  - [ ] Update training methodology for reverse-order sequence learning
+  - [ ] Validate gradient flow stability with new feedback mechanisms
 
-### Enhanced Architecture Analysis
-- [ ] **Task 1.1.1**: Analyze current HRM architecture for multi-agent code generation
-- [ ] **Task 1.1.2**: Design enhanced hierarchical reasoning with agent coordination
-- [ ] **Task 1.1.3**: Design multi-language support with specialized agents
-- [ ] **Task 1.1.4**: Design tool use integration with agent orchestration
+### Architecture Analysis (Parallel with Implementation)
+- [ ] **Task 1.1.1**: Analyze current HRM architecture with research integration points
+- [ ] **Task 1.1.2**: Design enhanced hierarchical reasoning with self-evolution capabilities
+- [ ] **Task 1.1.3**: Design multi-language support with agent specialization
+- [ ] **Task 1.1.4**: Design tool use integration with autonomous orchestration
 
 ## Backlog (Upcoming Sprints)
 
@@ -75,11 +91,12 @@
 
 ## Success Metrics & Performance Targets
 
-### Revolutionary Performance Goals
-- **SWE-bench**: >60% success rate (competing with Claude 4 Sonnet's 72.7%) using 370x fewer parameters
-- **LiveCodeBench**: Top-3 performance with <100M parameters
-- **Polyglot**: >80% success rate across all 6 languages
-- **Multi-Agent Coordination**: 30+ parallel specialized agents with <20% coordination overhead
+### Revolutionary Performance Goals (Updated with Research Integration)
+- **SWE-bench**: >65% success rate (competing with Claude 4 Sonnet's 72.7%) using 370x fewer parameters
+- **LiveCodeBench**: Top-3 performance with <85M parameters (revised from <100M)
+- **Polyglot**: >85% success rate across all 6 languages (up from 80% baseline)
+- **Self-Evolution Gains**: +23% relative improvement across all benchmarks
+- **Multi-Agent Coordination**: 30+ parallel specialized agents with <15% coordination overhead
 
 ### Efficiency & Deployment Targets  
 - **Local Deployment**: <2GB memory usage on consumer hardware
