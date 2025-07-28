@@ -1,0 +1,146 @@
+# HRM Multi-Agent System Configuration
+# This configuration defines the setup for 30+ specialized agents
+
+max_agents: 32
+
+# Agent type configurations
+agent_types:
+  # Language-specific agents (12 total)
+  language_python:
+    count: 4
+    model_path: "checkpoints/hrm_python.pt"
+  language_javascript:
+    count: 2
+    model_path: "checkpoints/hrm_javascript.pt"
+  language_rust:
+    count: 2
+    model_path: "checkpoints/hrm_rust.pt"
+  language_go:
+    count: 2
+    model_path: "checkpoints/hrm_go.pt"
+  language_java:
+    count: 1
+    model_path: "checkpoints/hrm_java.pt"
+  language_cpp:
+    count: 1
+    model_path: "checkpoints/hrm_cpp.pt"
+
+  # Tool-specific agents (12 total)
+  tool_git:
+    count: 3
+    model_path: "checkpoints/hrm_git.pt"
+  tool_docker:
+    count: 2
+    model_path: "checkpoints/hrm_docker.pt"
+  tool_npm:
+    count: 2
+    model_path: "checkpoints/hrm_npm.pt"
+  tool_testing:
+    count: 3
+    model_path: "checkpoints/hrm_testing.pt"
+  tool_build:
+    count: 1
+    model_path: "checkpoints/hrm_build.pt"
+  tool_debug:
+    count: 1
+    model_path: "checkpoints/hrm_debug.pt"
+
+  # Domain-specific agents (6 total)
+  domain_web:
+    count: 2
+    model_path: "checkpoints/hrm_web.pt"
+  domain_ml:
+    count: 1
+    model_path: "checkpoints/hrm_ml.pt"
+  domain_systems:
+    count: 1
+    model_path: "checkpoints/hrm_systems.pt"
+  domain_database:
+    count: 1
+    model_path: "checkpoints/hrm_database.pt"
+  domain_api:
+    count: 1
+    model_path: "checkpoints/hrm_api.pt"
+
+  # Meta-agents for coordination (2 total)
+  meta_coordinator:
+    count: 1
+    model_path: "checkpoints/hrm_meta.pt"
+  meta_reviewer:
+    count: 1
+    model_path: "checkpoints/hrm_reviewer.pt"
+
+# Deployment configuration
+deployment:
+  type: "local"  # Can be: local, docker, modal
+  
+  # Local deployment settings
+  local:
+    max_memory: "16GB"
+    max_cpu_cores: 8
+    temp_dir: "/tmp/hrm_agents"
+  
+  # Docker deployment settings (alternative)
+  docker:
+    image: "python:3.10-slim"
+    memory_limit: "2g"
+    cpu_limit: "1.0"
+    network_mode: "bridge"
+    volumes:
+      - "./checkpoints:/app/checkpoints:ro"
+      - "./cache:/tmp/cache:rw"
+  
+  # Modal deployment settings (for cloud scale)
+  modal:
+    image: "python:3.10"
+    cpu: 2.0
+    memory: 4096
+    gpu: false
+    timeout: 3600
+
+# Performance settings
+performance:
+  task_timeout: 300.0
+  health_check_interval: 30.0
+  max_retries: 3
+  load_balancing_strategy: "least_loaded"  # Can be: least_loaded, round_robin, capability_based
+
+# Monitoring and logging
+monitoring:
+  log_level: "INFO"
+  metrics_collection: true
+  health_monitoring: true
+  performance_tracking: true
+  
+  # Export metrics (optional)
+  prometheus:
+    enabled: false
+    port: 9090
+  
+  # Log destinations
+  logging:
+    console: true
+    file: "logs/hrm_agents.log"
+    structured: true
+
+# Security settings
+security:
+  sandbox_mode: true
+  resource_limits:
+    max_file_size: "100MB"  
+    max_execution_time: 300.0
+    max_memory_per_agent: "2GB"
+    network_access: "restricted"
+  
+  allowed_commands:
+    - "python"
+    - "node"
+    - "cargo"
+    - "go"
+    - "javac"
+    - "g++"
+    - "git"
+    - "docker"
+    - "npm"
+    - "pytest"
+    - "rustc"
