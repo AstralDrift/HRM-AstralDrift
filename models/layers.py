@@ -6,9 +6,16 @@ import torch.nn.functional as F
 
 try:
     from flash_attn_interface import flash_attn_func  # type: ignore[import]
+    FLASH_ATTN_AVAILABLE = True
 except ImportError:
-    # Fallback to FlashAttention 2
-    from flash_attn import flash_attn_func  # type: ignore[import]
+    try:
+        # Fallback to FlashAttention 2
+        from flash_attn import flash_attn_func  # type: ignore[import]
+        FLASH_ATTN_AVAILABLE = True
+    except ImportError:
+        # No FlashAttention available - will use standard attention
+        flash_attn_func = None
+        FLASH_ATTN_AVAILABLE = False
 
 from models.common import trunc_normal_init_
 
@@ -126,13 +133,31 @@ class Attention(nn.Module):
             cos, sin = cos_sin
             query, key = apply_rotary_pos_emb(query, key, cos, sin)
 
-        # flash attn
-        attn_output = flash_attn_func(q=query, k=key, v=value, causal=self.causal)
-        if isinstance(attn_output, tuple):  # fa2 and fa3 compatibility
-            attn_output = attn_output[0]
-
-        # attn_output: [batch_size, num_heads, seq_len, head_dim]
-        attn_output = attn_output.view(batch_size, seq_len, self.output_size)  # type: ignore
+        # flash attn or fallback to standard attention
+        if FLASH_ATTN_AVAILABLE and flash_attn_func is not None:
+            attn_output = flash_attn_func(q=query, k=key, v=value, causal=self.causal)
+            if isinstance(attn_output, tuple):  # fa2 and fa3 compatibility
+                attn_output = attn_output[0]
+            # attn_output: [batch_size, num_heads, seq_len, head_dim]
+            attn_output = attn_output.view(batch_size, seq_len, self.output_size)  # type: ignore
+        else:
+            # Fallback to standard PyTorch attention
+            query = query.transpose(1, 2)  # [batch_size, num_heads, seq_len, head_dim]
+            key = key.transpose(1, 2)
+            value = value.transpose(1, 2)
+            
+            # Replicate key/value for GQA if needed
+            if self.num_key_value_heads != self.num_heads:
+                key = key.repeat_interleave(self.num_heads // self.num_key_value_heads, dim=1)
+                value = value.repeat_interleave(self.num_heads // self.num_key_value_heads, dim=1)
+            
+            attn_output = F.scaled_dot_product_attention(
+                query, key, value, 
+                is_causal=self.causal,
+                dropout_p=0.0
+            )
+            attn_output = attn_output.transpose(1, 2)  # [batch_size, seq_len, num_heads, head_dim]
+            attn_output = attn_output.contiguous().view(batch_size, seq_len, self.output_size)
         return self.o_proj(attn_output)
 
 

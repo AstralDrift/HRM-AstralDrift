@@ -76,6 +76,40 @@ Transform the Hierarchical Reasoning Model (HRM) into a world-class code generat
 - Function/class-level context (low-level module)
 - Cross-reference and dependency tracking
 
+### 1.4 Multi-Agent Architecture Integration
+
+#### SWE-ReX Runtime Integration
+- **Parallel Agent Execution**: Integrate SWE-ReX for 30+ simultaneous specialized agents
+- **Infrastructure Abstraction**: Support local, Docker, AWS, Modal deployment environments
+- **Interactive CLI Support**: Enable complex multi-tool development workflows
+- **Session Management**: Handle multiple shell sessions and command execution contexts
+
+#### HRM as Meta-Agent Orchestrator
+- **High-Level Agent Coordination**: Use HRM's hierarchical reasoning for agent task distribution
+- **Specialized Sub-Agent Management**: Coordinate language-specific, tool-specific, and domain-specific agents
+- **Dynamic Agent Spawning**: Adaptively create agents based on task complexity and requirements
+- **Execution Environment Orchestration**: Manage sandboxed environments for safe code execution
+
+#### Agent Communication Protocols
+- **Task Decomposition Interface**: Break complex problems into agent-specific subtasks
+- **Result Aggregation System**: Combine outputs from multiple specialized agents
+- **Error Recovery Coordination**: Handle agent failures and implement fallback strategies
+- **Performance Monitoring**: Track agent efficiency and coordination overhead
+
+### 1.5 SWE-smith Data Infrastructure
+
+#### Unlimited Task Generation System
+- **Repository Conversion**: Transform GitHub repos into "SWE-gym" training environments
+- **Task Registry Integration**: Leverage SWE-smith's modular task loading system
+- **Docker Environment Management**: Consistent execution contexts for training and evaluation
+- **Scalable Data Pipeline**: Generate 52K+ software engineering training instances
+
+#### Enhanced Training Data Diversity
+- **Multi-Repository Coverage**: Expand beyond standard benchmarks to diverse codebases
+- **Custom Task Creation**: Generate HRM-specific hierarchical reasoning challenges
+- **Agent Coordination Scenarios**: Create multi-agent training examples and workflows
+- **Real-World Problem Synthesis**: Generate authentic software engineering tasks from repository activity
+
 ## Phase 2: Dataset Development & Training
 
 ### 2.1 LiveCodeBench Integration
@@ -123,6 +157,40 @@ Transform the Hierarchical Reasoning Model (HRM) into a world-class code generat
 - Error recovery and alternative tool strategies
 - Multi-step complex operations
 - Environment-specific adaptations
+
+### 2.4 SWE-smith Massive Dataset Integration
+
+#### Scalable Training Data Generation
+- **52K+ Task Instances**: Leverage SWE-smith's comprehensive software engineering dataset
+- **Repository Diversity**: Expand training beyond 12 core SWE-bench repositories
+- **Unlimited Task Creation**: Generate new training instances from any GitHub repository
+- **Domain-Specific Augmentation**: Create tasks targeting HRM's hierarchical reasoning strengths
+
+#### Multi-Agent Training Data Synthesis
+- **Agent Coordination Examples**: Generate scenarios requiring multiple specialized agents
+- **Parallel Execution Training**: Create examples of concurrent agent workflows
+- **Tool Orchestration Scenarios**: Multi-agent CLI and development tool coordination
+- **Failure Recovery Sequences**: Train agents to handle coordination failures and implement fallbacks
+
+#### Enhanced Task Registry System
+- **Modular Task Loading**: Integrate SWE-smith's programmatic task registry
+- **Container-Based Environments**: Leverage Docker environments for consistent training
+- **Task Validation Pipeline**: Automated unit test generation and issue synthesis
+- **Trajectory Collection**: Utilize 26K SWE-agent trajectories for reinforcement learning
+
+### 2.5 Multi-Agent Workflow Training
+
+#### Agent Specialization Training Data
+- **Language-Specific Agents**: Training data for C++, Go, Java, JavaScript, Python, Rust specialists
+- **Tool-Specific Agents**: Git, Docker, build system, debugging tool specialists
+- **Domain-Specific Agents**: Web development, ML/data science, systems programming specialists
+- **Cross-Agent Communication**: Training examples for agent coordination protocols
+
+#### Complex Workflow Orchestration
+- **End-to-End Development Workflows**: Full software development lifecycle examples
+- **Multi-Repository Projects**: Cross-codebase coordination and dependency management
+- **Parallel Development Tasks**: Concurrent feature development and bug fixing scenarios
+- **Integration Testing Workflows**: Multi-agent testing and validation coordination
 
 ## Phase 3: Training Pipeline & Optimization
 
@@ -185,6 +253,40 @@ Transform the Hierarchical Reasoning Model (HRM) into a world-class code generat
 - Batch processing for multiple problems
 - Speculative decoding for common patterns
 - Model pruning and sparsity
+
+### 3.4 Multi-Agent System Training
+
+#### HRM Meta-Agent Training
+- **Agent Orchestration Optimization**: Train high-level module for optimal agent task distribution
+- **Dynamic Agent Spawning**: Learn when to create specialized agents vs handle tasks directly
+- **Resource Management**: Optimize computational resource allocation across agent ensemble
+- **Coordination Overhead Minimization**: Balance coordination benefits vs communication costs
+
+#### Reinforcement Learning from Execution
+- **Execution Feedback Integration**: Use SWE-ReX execution results for RL training
+- **Multi-Agent Reward Shaping**: Design rewards for effective agent coordination
+- **Parallel Environment Training**: Train across 30+ simultaneous execution environments
+- **Agent Performance Attribution**: Learn which agents contribute most effectively to different task types
+
+#### Specialized Agent Fine-Tuning
+- **Language-Specific Optimization**: Fine-tune agents for specific programming language expertise
+- **Tool-Specific Training**: Optimize agents for particular development tools and workflows
+- **Domain Transfer Learning**: Transfer knowledge between related software engineering domains
+- **Agent Ensemble Learning**: Train agents to complement each other's strengths and compensate for weaknesses
+
+### 3.5 SWE-ReX Infrastructure Integration
+
+#### Massive Parallel Execution Capability
+- **30+ Concurrent Agents**: Leverage SWE-ReX for massive parallel agent execution
+- **Infrastructure Agnostic Deployment**: Support local, Docker, AWS, Modal execution environments
+- **Interactive Command-Line Tools**: Enable complex multi-step development workflows
+- **Automatic Command Completion**: Integrate SWE-ReX's execution detection and output extraction
+
+#### Execution Environment Management
+- **Sandboxed Shell Environments**: Safe execution of potentially dangerous code modifications
+- **Multi-Platform Support**: Consistent execution across different computational contexts
+- **Session Management**: Handle multiple concurrent shell sessions per agent
+- **Resource Monitoring**: Track computational resource usage across agent ensemble
 
 ## Phase 4: Evaluation & Benchmarking
 
@@ -264,9 +366,13 @@ Transform the Hierarchical Reasoning Model (HRM) into a world-class code generat
 
 ### Target Performance
 - **LiveCodeBench**: Top-3 performance with <100M parameters
-- **Polyglot**: >80% success rate across all 6 languages
+- **Polyglot**: >80% success rate across all 6 languages  
+- **SWE-bench**: >60% success rate competing with Claude 4 Sonnet (72.7%) using 370x fewer parameters
+- **Multi-Agent Coordination**: 30+ parallel specialized agents with <20% coordination overhead
 - **Efficiency**: <2GB memory, <1s per problem on consumer hardware
 - **Quantization**: <5% performance loss at 4-bit quantization
+- **Training Data Scale**: 50x increase (52K+ vs 1K training instances)
+- **Infrastructure Agnostic**: Deploy seamlessly across local, Docker, AWS, Modal environments
 
 ### Development Timeline
 - **Phase 1**: 2-3 months (Architecture & Foundation)

@@ -65,6 +65,30 @@
 **Dependencies:** 1.1.2
 **Success Criteria:** Tool integration architecture document
 
+#### Task 1.1.5: Design Multi-Agent Architecture with SWE-ReX Integration
+**Effort:** L | **Skills:** ARCH, INFRA
+**Description:** Design HRM as meta-agent orchestrator using SWE-ReX infrastructure
+**Deliverables:**
+- SWE-ReX runtime integration architecture
+- HRM meta-agent coordination protocols
+- Specialized sub-agent type definitions (language, tool, domain-specific)
+- Agent communication and task distribution design
+- Dynamic agent spawning and resource management strategy
+**Dependencies:** 1.1.2, 1.1.4
+**Success Criteria:** Complete multi-agent architecture specification with SWE-ReX integration
+
+#### Task 1.1.6: Design SWE-smith Data Infrastructure Integration
+**Effort:** M | **Skills:** ARCH, DATA
+**Description:** Plan integration of SWE-smith's unlimited task generation system
+**Deliverables:**
+- SWE-smith task registry integration design
+- Docker environment management strategy
+- 52K+ task instance processing pipeline
+- Repository conversion ("SWE-gym") architecture
+- Agent coordination training data synthesis plan
+**Dependencies:** 1.1.5
+**Success Criteria:** SWE-smith integration architecture with data pipeline design
+
 ### 1.2 Core Implementation Tasks
 
 #### Task 1.2.1: Create Code Generation Input Processing Module
@@ -251,6 +275,87 @@
 **Dependencies:** 2.3.2
 **Success Criteria:** Complex workflow training dataset
 
+### 2.4 SWE-smith Massive Dataset Integration
+
+#### Task 2.4.1: Clone and Setup SWE-smith Repository
+**Effort:** XS | **Skills:** INFRA, DATA
+**Description:** Set up SWE-smith infrastructure for unlimited task generation
+**Deliverables:**
+- SWE-smith repository cloned and configured
+- Docker environment setup and validation
+- Task registry system understanding
+- Initial container-based task creation test
+**Dependencies:** 1.1.6
+**Success Criteria:** Working SWE-smith installation with basic task generation
+
+#### Task 2.4.2: Implement SWE-smith Task Registry Integration
+**Effort:** M | **Skills:** DATA, INFRA
+**Description:** Integrate SWE-smith's modular task loading system
+**Deliverables:**
+- Programmatic task loading implementation
+- Container-based task instance creation
+- Task validation pipeline integration
+- Docker environment management system
+**Dependencies:** 2.4.1
+**Success Criteria:** Seamless task registry integration with HRM data pipeline
+
+#### Task 2.4.3: Create 52K+ Training Dataset from SWE-smith
+**Effort:** L | **Skills:** DATA
+**Description:** Generate massive software engineering training dataset
+**Deliverables:**
+- 52K+ task instance extraction and processing
+- HRM-specific task filtering and categorization
+- Multi-repository task diversity analysis
+- Repository conversion ("SWE-gym") implementation
+**Dependencies:** 2.4.2
+**Success Criteria:** Comprehensive 52K+ task dataset ready for HRM training
+
+#### Task 2.4.4: Implement SWE-agent Trajectory Collection Integration
+**Effort:** M | **Skills:** DATA, TRAIN
+**Description:** Leverage 26K SWE-agent trajectories for reinforcement learning
+**Deliverables:**
+- SWE-agent trajectory data extraction
+- RL training data format conversion
+- Agent behavior pattern analysis
+- Multi-agent coordination example generation
+**Dependencies:** 2.4.3
+**Success Criteria:** RL-ready trajectory dataset for agent training
+
+### 2.5 Multi-Agent Training Data Synthesis
+
+#### Task 2.5.1: Create Agent Specialization Training Data
+**Effort:** L | **Skills:** DATA, ARCH
+**Description:** Generate training data for specialized agent types
+**Deliverables:**
+- Language-specific agent training examples (C++, Go, Java, JS, Python, Rust)
+- Tool-specific agent training data (Git, Docker, build systems, debugging)
+- Domain-specific agent examples (web dev, ML/data science, systems programming)
+- Cross-agent communication protocol examples
+**Dependencies:** 1.1.5, 2.4.3
+**Success Criteria:** Comprehensive specialized agent training dataset
+
+#### Task 2.5.2: Generate Multi-Agent Coordination Scenarios
+**Effort:** M | **Skills:** DATA, ARCH
+**Description:** Create training examples for agent coordination and orchestration
+**Deliverables:**
+- Agent coordination workflow examples
+- Parallel execution training scenarios
+- Task decomposition and distribution examples
+- Failure recovery and fallback coordination sequences
+**Dependencies:** 2.5.1
+**Success Criteria:** Multi-agent coordination training dataset
+
+#### Task 2.5.3: Create Complex Workflow Orchestration Training Data
+**Effort:** L | **Skills:** DATA
+**Description:** Generate end-to-end development workflow training examples
+**Deliverables:**
+- Full software development lifecycle examples
+- Multi-repository project coordination data
+- Concurrent development task scenarios
+- Integration testing workflow examples
+**Dependencies:** 2.5.2
+**Success Criteria:** Complex orchestration training dataset ready for HRM
+
 ## Phase 3: Training Pipeline & Optimization (Priority: High)
 
 ### 3.1 Training Infrastructure
@@ -344,6 +449,76 @@
 - CPU benchmark testing
 **Dependencies:** 3.2.3
 **Success Criteria:** Efficient CPU inference under 2GB memory
+
+### 3.3 Multi-Agent System Training
+
+#### Task 3.3.1: Implement HRM Meta-Agent Training Pipeline
+**Effort:** L | **Skills:** TRAIN, ARCH
+**Description:** Train HRM as meta-agent orchestrator for specialized agents
+**Deliverables:**
+- Agent orchestration optimization training
+- Dynamic agent spawning decision training
+- Resource management optimization algorithms
+- Coordination overhead minimization strategies
+**Dependencies:** 2.5.3, 3.1.1
+**Success Criteria:** HRM meta-agent capable of effective agent coordination
+
+#### Task 3.3.2: Implement Reinforcement Learning from SWE-ReX Execution
+**Effort:** L | **Skills:** TRAIN, INFRA
+**Description:** Integrate SWE-ReX execution feedback for RL training
+**Deliverables:**
+- Execution feedback integration system
+- Multi-agent reward shaping implementation
+- Parallel environment training setup (30+ environments)
+- Agent performance attribution algorithms
+**Dependencies:** 3.3.1, 2.4.4
+**Success Criteria:** RL training system using execution feedback from 30+ parallel agents
+
+#### Task 3.3.3: Implement Specialized Agent Fine-Tuning
+**Effort:** L | **Skills:** TRAIN
+**Description:** Fine-tune specialized agents for optimal performance
+**Deliverables:**
+- Language-specific agent optimization (6 languages)
+- Tool-specific agent training (Git, Docker, build systems, debugging)
+- Domain transfer learning implementation
+- Agent ensemble learning algorithms
+**Dependencies:** 3.3.2, 2.5.1
+**Success Criteria:** Specialized agents demonstrating expertise in their domains
+
+### 3.4 SWE-ReX Infrastructure Integration
+
+#### Task 3.4.1: Implement SWE-ReX Runtime Integration
+**Effort:** M | **Skills:** INFRA, ARCH
+**Description:** Integrate SWE-ReX for massive parallel agent execution
+**Deliverables:**
+- 30+ concurrent agent execution capability
+- Infrastructure agnostic deployment (local, Docker, AWS, Modal)
+- Interactive command-line tool support
+- Automatic command completion and output extraction
+**Dependencies:** 1.1.5
+**Success Criteria:** Working SWE-ReX integration supporting 30+ parallel agents
+
+#### Task 3.4.2: Implement Execution Environment Management
+**Effort:** M | **Skills:** INFRA
+**Description:** Create comprehensive execution environment management system
+**Deliverables:**
+- Sandboxed shell environment management
+- Multi-platform execution support
+- Multiple concurrent session handling per agent
+- Computational resource monitoring and allocation
+**Dependencies:** 3.4.1
+**Success Criteria:** Robust execution environment management for agent ensemble
+
+#### Task 3.4.3: Implement Agent Communication and Coordination Infrastructure
+**Effort:** M | **Skills:** ARCH, INFRA
+**Description:** Build communication infrastructure for multi-agent coordination
+**Deliverables:**
+- Agent-to-agent communication protocols
+- Task distribution and result aggregation systems
+- Failure detection and recovery mechanisms
+- Performance monitoring and optimization tools
+**Dependencies:** 3.4.2, 3.3.1
+**Success Criteria:** Efficient agent communication with <20% coordination overhead
 
 ## Phase 4: Evaluation & Benchmarking (Priority: Medium)
 
@@ -470,15 +645,18 @@
 ## Dependencies and Critical Path
 
 ### Critical Path Tasks (Must Complete First)
-1. 1.1.1 → 1.1.2 → 1.2.3 → 1.2.4 → 1.2.5 (Core Architecture)
-2. 2.1.1 → 2.1.2 → 2.1.3 (LiveCodeBench Data)
-3. 2.2.1 → 2.2.2 → 2.2.3 (Polyglot Data)
-4. 3.1.1 → 3.1.2 (Training Pipeline)
+1. **Core Architecture**: 1.1.1 → 1.1.2 → 1.1.5 → 1.2.3 → 1.2.4 → 1.2.5 (HRM with Multi-Agent Architecture)
+2. **Data Infrastructure**: 1.1.6 → 2.4.1 → 2.4.2 → 2.4.3 (SWE-smith Integration)
+3. **Multi-Agent Training**: 2.5.1 → 2.5.2 → 2.5.3 → 3.3.1 → 3.3.2 → 3.3.3 (Specialized Agent Training)
+4. **Infrastructure**: 3.4.1 → 3.4.2 → 3.4.3 (SWE-ReX Integration)
+5. **Benchmarks**: 2.1.1 → 2.1.2 → 2.1.3 (LiveCodeBench) | 2.2.1 → 2.2.2 → 2.2.3 (Polyglot)
 
 ### Parallel Development Opportunities
-- Dataset processing (2.1.x and 2.2.x) can be done in parallel
-- Evaluation pipelines (2.1.4, 2.2.4) can be developed while training pipeline is being built
-- Quantization research (3.2.1) can be done early and in parallel
+- **Dataset Processing**: All 2.x tasks can be developed in parallel once architectures are designed
+- **SWE-smith and Standard Benchmarks**: 2.4.x and (2.1.x, 2.2.x) can be developed concurrently
+- **Evaluation Pipelines**: 2.1.4, 2.2.4 can be developed while training pipeline is being built
+- **Infrastructure**: 3.4.x can be developed in parallel with training pipeline 3.1.x
+- **Quantization Research**: 3.2.1 can be done early and in parallel with other tasks
 
 ### Risk Mitigation Tasks
 - Create frequent checkpoint saves during architecture modifications
