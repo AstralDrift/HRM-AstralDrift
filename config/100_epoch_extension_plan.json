@@ -1,0 +1,137 @@
+{
+  "extension_plan": {
+    "description": "Simplified 2-phase training extension with LiveCodeBench focus",
+    "total_epochs": 50,
+    "phases": {
+      "phase_1": {
+        "name": "Foundation & Optimization",
+        "epochs": "1-25",
+        "focus": "Tokenizer-fixed training with optimization tweaks",
+        "config": {
+          "learning_rate": 4e-5,
+          "swe_candidates": 15,
+          "swe_search_weight": 0.35,
+          "reverse_learning_weight": 0.25,
+          "exploration_prob": 0.5,
+          "weight_decay": 0.2,
+          "gradient_clip": 2.0
+        },
+        "expected_metrics": {
+          "syntax_validity": "40-70%",
+          "compilation_success": "25-50%",
+          "loss": "< 0.8",
+          "swe_convergence": "0.3-0.6"
+        },
+        "milestones": {
+          "epoch_10": "First code metrics validation",
+          "epoch_15": "SWE search convergence check",
+          "epoch_20": "Mid-phase evaluation",
+          "epoch_25": "Phase transition readiness"
+        }
+      },
+      "phase_2": {
+        "name": "LiveCodeBench Integration & Mastery",
+        "epochs": "26-50", 
+        "focus": "Real coding problems with advanced reasoning",
+        "config": {
+          "learning_rate": 2e-5,
+          "swe_candidates": 20,
+          "swe_search_weight": 0.4,
+          "reverse_learning_weight": 0.3,
+          "exploration_prob": 0.3,
+          "weight_decay": 0.15,
+          "gradient_clip": 1.5,
+          "enable_livecodebench": true,
+          "difficulty_adaptive_sampling": true
+        },
+        "expected_metrics": {
+          "syntax_validity": "70-90%",
+          "compilation_success": "60-80%",
+          "loss": "< 0.5",
+          "swe_convergence": "0.7-0.9",
+          "pass_at_1": "15-30%",
+          "pass_at_5": "25-45%"
+        },
+        "milestones": {
+          "epoch_30": "LiveCodeBench integration validation",
+          "epoch_35": "Multi-scenario training assessment", 
+          "epoch_40": "Code generation quality check",
+          "epoch_45": "Final optimization tuning",
+          "epoch_50": "Complete evaluation and analysis"
+        }
+      }
+    }
+  },
+  "livecodebench_integration": {
+    "dataset_source": "HuggingFace Hub: livecodebench/code_generation_lite",
+    "fetch_command": "python scripts/fetch_real_livecodebench.py --version release_v2 --use-lite",
+    "dataset_details": {
+      "version": "release_v2",
+      "problem_count": 511,
+      "sources": "LeetCode, AtCoder, CodeForces",
+      "format": "HRM-compatible JSON",
+      "contamination_free": true
+    },
+    "integration_epoch": 26,
+    "evaluation_scenarios": [
+      "Code Generation (pass@1, pass@5)",
+      "Self-Repair (fix buggy code)", 
+      "Test Output Prediction",
+      "Multi-scenario training"
+    ],
+    "expected_performance": {
+      "pass_at_1": "15-30%",
+      "pass_at_5": "25-45%",
+      "syntax_validity": "80%+",
+      "compilation_success": "70%+"
+    }
+  },
+  "restart_commands": {
+    "prepare_data": "python scripts/fetch_real_livecodebench.py --version release_v2 --use-lite",
+    "backup_checkpoints": "python scripts/backup_checkpoints.py --action backup --name pre_tokenizer_restart",
+    "phase_1_start": "nohup python train_hrm_optimized.py --epochs 25 --batch-size 6 --learning-rate 4e-5 --run-name hrm-2phase-p1-$(date +%Y%m%d) --data-path data/livecodebench_real/livecodebench_real.json --config config/optimized_restart_config.json > phase1_training.log 2>&1 &",
+    "phase_2_start": "nohup python train_hrm_optimized.py --resume checkpoints/hrm-2phase-p1/epoch_25.pt --epochs 50 --learning-rate 2e-5 --run-name hrm-2phase-p2-$(date +%Y%m%d) --enable-livecodebench > phase2_training.log 2>&1 &",
+    "monitoring": "python scripts/monitor_training_advanced.py --continuous --interval 300",
+    "evaluation": "python scripts/evaluate_epoch50_checkpoint.py --checkpoint checkpoints/hrm-2phase-p2/epoch_50.pt"
+  },
+  "epoch_50_predictions": {
+    "mathematical_model": "Based on exponential decay and sigmoid growth models",
+    "predictions": {
+      "loss": {
+        "value": 0.52,
+        "confidence": 0.8,
+        "model": "exponential_decay with asymptote 0.3"
+      },
+      "syntax_validity": {
+        "value": 0.78,
+        "confidence": 0.75,
+        "model": "sigmoid_growth with max 0.9, midpoint epoch 35"
+      },
+      "compilation_success": {
+        "value": 0.68,
+        "confidence": 0.7,
+        "model": "sigmoid_growth with max 0.85, midpoint epoch 40"
+      },
+      "swe_convergence": {
+        "value": 0.74,
+        "confidence": 0.65,
+        "model": "linear_growth starting epoch 25"
+      },
+      "combined_score": {
+        "value": 0.73,
+        "confidence": 0.75,
+        "target": 0.85
+      }
+    },
+    "convergence_assessment": {
+      "probability": 0.75,
+      "expected_epoch": "60-70 (if extended)",
+      "recommendation": "Continue training - strong convergence trajectory",
+      "risk_factors": [
+        "SWE convergence may plateau",
+        "LiveCodeBench integration complexity",
+        "Potential overfitting after epoch 45"
+      ]
+    }
+  }
+}

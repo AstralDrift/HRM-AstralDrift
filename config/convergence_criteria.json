@@ -1,0 +1,126 @@
+{
+  "convergence_criteria": {
+    "description": "Multi-metric convergence criteria for HRM training",
+    "primary_metrics": {
+      "loss_convergence": {
+        "target_loss": 0.5,
+        "stability_window": 5,
+        "max_variance": 0.02,
+        "description": "Loss should be < 0.5 and stable for 5 epochs"
+      },
+      "syntax_validity": {
+        "target_percentage": 80,
+        "min_samples": 100,
+        "consecutive_epochs": 3,
+        "description": "80%+ syntax validity for 3 consecutive epochs"
+      },
+      "compilation_success": {
+        "target_percentage": 70,
+        "min_samples": 100,
+        "consecutive_epochs": 3,
+        "description": "70%+ compilation success for 3 consecutive epochs"
+      }
+    },
+    "secondary_metrics": {
+      "swe_convergence": {
+        "target_score": 0.75,
+        "stability_threshold": 0.05,
+        "description": "SWE search convergence > 0.75 with stability"
+      },
+      "halting_efficiency": {
+        "target_percentage": 95,
+        "avg_steps_range": [4, 8],
+        "description": "95%+ halting success with 4-8 avg steps"
+      },
+      "token_accuracy": {
+        "target_percentage": 99.5,
+        "description": "Token-level accuracy > 99.5%"
+      }
+    },
+    "early_stopping": {
+      "patience_epochs": 10,
+      "min_improvement": 0.001,
+      "monitor_metric": "combined_score",
+      "description": "Stop if no improvement for 10 epochs"
+    },
+    "combined_score_formula": {
+      "weights": {
+        "loss_component": 0.25,
+        "syntax_validity": 0.25,
+        "compilation_success": 0.25,
+        "swe_convergence": 0.15,
+        "halting_efficiency": 0.10
+      },
+      "target_combined_score": 0.85,
+      "description": "Weighted combination of all metrics"
+    }
+  },
+  "epoch50_prediction": {
+    "description": "Predicted metrics for Epoch 50 based on current trajectory",
+    "base_assumptions": {
+      "current_epoch": 22,
+      "current_loss": 1.05,
+      "current_token_accuracy": 0.999,
+      "current_syntax_validity": "~30-50% (post-tokenizer fix)",
+      "current_compilation_success": "~20-40% (post-tokenizer fix)"
+    },
+    "prediction_model": {
+      "loss_prediction": {
+        "formula": "exponential_decay",
+        "parameters": {
+          "initial_loss": 37.75,
+          "current_loss": 1.05,
+          "decay_rate": 0.12,
+          "asymptote": 0.3
+        },
+        "epoch50_prediction": 0.65,
+        "confidence": 0.8
+      },
+      "syntax_validity_prediction": {
+        "formula": "sigmoid_growth",
+        "parameters": {
+          "max_value": 0.9,
+          "growth_rate": 0.15,
+          "midpoint_epoch": 35
+        },
+        "epoch50_prediction": 0.75,
+        "confidence": 0.7
+      },
+      "compilation_success_prediction": {
+        "formula": "sigmoid_growth",
+        "parameters": {
+          "max_value": 0.85,
+          "growth_rate": 0.12,
+          "midpoint_epoch": 40
+        },
+        "epoch50_prediction": 0.65,
+        "confidence": 0.7
+      },
+      "swe_convergence_prediction": {
+        "formula": "linear_growth",
+        "parameters": {
+          "start_epoch": 25,
+          "growth_rate": 0.02,
+          "max_value": 0.8
+        },
+        "epoch50_prediction": 0.7,
+        "confidence": 0.6
+      }
+    },
+    "overall_prediction": {
+      "epoch50_combined_score": 0.72,
+      "convergence_probability": 0.75,
+      "recommended_action": "Continue training - likely to reach convergence by epoch 60-70",
+      "risk_factors": [
+        "SWE convergence slower than expected",
+        "Potential overfitting after epoch 45",
+        "Memory constraints with longer sequences"
+      ]
+    }
+  },
+  "monitoring_commands": {
+    "track_convergence": "python scripts/track_convergence.py --checkpoint-dir checkpoints/hrm-production-run --criteria config/convergence_criteria.json",
+    "predict_final_metrics": "python scripts/predict_final_metrics.py --current-epoch 22 --target-epoch 50",
+    "convergence_dashboard": "python scripts/convergence_dashboard.py --live-update --port 8080"
+  }
+}

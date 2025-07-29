@@ -1,0 +1,22 @@
+{
+  "epochs": 100,
+  "learning_rate": 2e-05,
+  "batch_size": 8,
+  "halt_exploration_prob": 0.5,
+  "halt_max_steps": 8,
+  "act_threshold": 0.95,
+  "swe_candidates": 15,
+  "swe_search_weight": 0.3,
+  "swe_temperature": 0.8,
+  "reverse_learning_weight": 0.15,
+  "reverse_momentum": 0.95,
+  "code_syntax_weight": 0.4,
+  "compilation_weight": 0.3,
+  "scheduler_t0": 100,
+  "min_lr": 1e-06,
+  "eval_interval": 500,
+  "checkpoint_interval": 5,
+  "use_real_livecodebench": true,
+  "data_augmentation": true,
+  "augmentation_factor": 2
+}

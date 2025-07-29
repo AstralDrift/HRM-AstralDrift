@@ -1,0 +1,34 @@
+{
+  "optimization_updates": {
+    "description": "Enhanced hyperparameters for tokenizer-fixed restart",
+    "changes": {
+      "swe_search": {
+        "swe_candidates": 15,
+        "swe_search_weight": 0.35,
+        "swe_temperature": 0.85
+      },
+      "exploration": {
+        "halt_exploration_prob": 0.5,
+        "halt_max_steps": 8,
+        "act_threshold": 0.95
+      },
+      "regularization": {
+        "weight_decay": 0.2,
+        "dropout_rate": 0.15,
+        "gradient_clip": 2.0
+      },
+      "learning": {
+        "learning_rate": 3e-5,
+        "warmup_steps": 1000,
+        "scheduler_t0": 75
+      }
+    }
+  },
+  "expected_improvements": {
+    "syntax_validity": "0% → 40-70%",
+    "compilation_success": "0% → 25-50%", 
+    "swe_convergence": "0 → 0.6-0.8",
+    "loss_trajectory": "Better convergence curve",
+    "overfitting_prevention": "Weight decay + dropout"
+  }
+}

@@ -87,13 +87,20 @@ class OptimizedCodeGenerationTrainer:
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         self.logger.info(f"   Model parameters: {total_params/1e6:.1f}M total, {trainable_params/1e6:.1f}M trainable")
         
-        # Initialize loss function
+        # Initialize loss function with tokenizer integration
         self.loss_fn = ACTSWESearchLossHead(
             self.model,
             loss_type=config.get('loss_type', 'softmax_cross_entropy'),
             swe_search_weight=config.get('swe_search_weight', 0.3),
-            reverse_learning_weight=config.get('reverse_learning_weight', 0.2)
+            reverse_learning_weight=config.get('reverse_learning_weight', 0.2),
+            tokenizer=getattr(self.train_loader.dataset, 'tokenizer', None)
         )
+        
+        # Validate tokenizer integration
+        if hasattr(self.train_loader.dataset, 'tokenizer'):
+            self.logger.info("✅ Tokenizer successfully integrated for code metrics")
+        else:
+            self.logger.warning("⚠️ No tokenizer found in dataset - will use fallback")
         
         # Initialize optimizer with better settings
         self.optimizer = torch.optim.AdamW(  # AdamW instead of Adam
