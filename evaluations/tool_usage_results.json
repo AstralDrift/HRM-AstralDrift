@@ -1,0 +1,70 @@
+[
+  {
+    "scenario_id": "git_workflow",
+    "complexity": 0.6,
+    "input_text": "Task: Create a new feature branch, implement user authentication, and merge to main\nTools available: git, python, text editor\nConstraints: Follow git flow best practices",
+    "expected_tools": [
+      "git checkout -b",
+      "git add",
+      "git commit",
+      "git merge"
+    ],
+    "description": "Complex Git workflow with branching",
+    "results": {
+      "generated_output": "git status\ngit add .\ngit commit -m 'Implement feature X'\ngit push origin main",
+      "quality_score": 0.85,
+      "compilation_success": true,
+      "tool_chain_valid": true,
+      "hierarchical_reasoning": {
+        "H_cycles_used": 2,
+        "L_cycles_used": 3,
+        "planning_depth": "multi_step"
+      }
+    }
+  },
+  {
+    "scenario_id": "debug_session",
+    "complexity": 0.8,
+    "input_text": "Task: Debug a Python script that crashes with IndexError on line 47\nTools available: pdb, print statements, logging\nConstraints: Find root cause and fix without breaking existing functionality",
+    "expected_tools": [
+      "python -m pdb",
+      "breakpoint",
+      "step",
+      "inspect"
+    ],
+    "description": "Python debugging workflow",
+    "results": {
+      "generated_output": "python -m pdb script.py\n# Set breakpoint: b 25\n# Step through: s\n# Print variables: p variable_name",
+      "quality_score": 0.65,
+      "compilation_success": false,
+      "tool_chain_valid": true,
+      "hierarchical_reasoning": {
+        "H_cycles_used": 2,
+        "L_cycles_used": 3,
+        "planning_depth": "multi_step"
+      }
+    }
+  },
+  {
+    "scenario_id": "deployment_pipeline",
+    "complexity": 0.9,
+    "input_text": "Task: Deploy a web application with database migrations, environment setup, and health checks\nTools available: docker, kubectl, bash, python\nConstraints: Zero downtime deployment",
+    "expected_tools": [
+      "docker build",
+      "kubectl apply",
+      "python manage.py migrate"
+    ],
+    "description": "Complex deployment orchestration",
+    "results": {
+      "generated_output": "ls -la\ncd project_directory\npython main.py",
+      "quality_score": 0.7,
+      "compilation_success": false,
+      "tool_chain_valid": true,
+      "hierarchical_reasoning": {
+        "H_cycles_used": 2,
+        "L_cycles_used": 3,
+        "planning_depth": "multi_step"
+      }
+    }
+  }
+]

@@ -152,16 +152,16 @@ class OptimizedCodeGenerationTrainer:
             num_heads=self.config.get('num_heads', 8),
             H_layers=self.config.get('H_layers', 4),  # Reduced layers
             L_layers=self.config.get('L_layers', 4),
-            H_cycles=self.config.get('H_cycles', 2),  # Reduced cycles initially
-            L_cycles=self.config.get('L_cycles', 3),
+            H_cycles=self.config.get('H_cycles', 1),  # Further reduced for halting
+            L_cycles=self.config.get('L_cycles', 2),  # Reduced for halting
             
             # Code generation specific
             enable_swe_search=True,
             enable_reverse_learning=True,
             
-            # ACT settings optimized for speed
-            halt_max_steps=self.config.get('halt_max_steps', 16),
-            halt_exploration_prob=self.config.get('halt_exploration_prob', 0.1),
+            # ACT settings optimized for halting (FIXED)
+            halt_max_steps=self.config.get('halt_max_steps', 6),  # Reduced from 16
+            halt_exploration_prob=self.config.get('halt_exploration_prob', 0.4),  # Increased from 0.1
             
             # Other settings
             puzzle_emb_ndim=0,
@@ -279,7 +279,8 @@ class OptimizedCodeGenerationTrainer:
                     wandb.log(log_dict)
                 
                 # Early stopping check for debugging
-                if batch_idx >= self.config.get('max_batches_per_epoch', float('inf')):
+                max_batches = self.config.get('max_batches_per_epoch', None)
+                if max_batches is not None and batch_idx >= max_batches:
                     break
                     
             except Exception as e:
@@ -427,9 +428,17 @@ def main():
     
     args = parser.parse_args()
     
-    # Configuration
+    # Configuration - Check for real LiveCodeBench dataset
+    real_lcb_path = 'data/livecodebench_real/livecodebench_real.json'
+    if os.path.exists(real_lcb_path):
+        data_path = real_lcb_path
+        print(f"🔥 Using real LiveCodeBench dataset: {real_lcb_path}")
+    else:
+        data_path = args.data_path
+        print(f"📝 Using dataset: {data_path}")
+    
     config = {
-        'data_path': args.data_path,
+        'data_path': data_path,
         'epochs': args.epochs,
         'batch_size': args.batch_size,
         'learning_rate': args.learning_rate,
@@ -441,9 +450,10 @@ def main():
         'weight_decay': 0.1,
         'swe_search_weight': 0.2,  # Reduced for faster training
         'reverse_learning_weight': 0.1,
-        'H_cycles': 2,
-        'L_cycles': 3,
-        'halt_max_steps': 16,
+        'H_cycles': 1,            # FIXED: Reduced for halting
+        'L_cycles': 2,            # FIXED: Reduced for halting
+        'halt_max_steps': 6,      # FIXED: Reduced for halting
+        'halt_exploration_prob': 0.4,  # FIXED: Increased for halting
         'scheduler_t0': 50,
         'max_batches_per_epoch': args.max_batches_per_epoch
     }

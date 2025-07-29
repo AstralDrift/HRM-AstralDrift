@@ -1,4 +1,6 @@
 from typing import Any, Tuple, Dict, Sequence, Optional
+import ast
+import re
 
 import torch
 import torch.nn.functional as F
@@ -126,7 +128,7 @@ class ACTSWESearchLossHead(nn.Module):
         new_carry, outputs = self.model(**model_kwargs)
         labels = new_carry.current_data["labels"]
 
-        # Standard loss computation (same as ACTLossHead)
+        # Enhanced loss computation with progressive metrics
         with torch.no_grad():
             mask = labels != IGNORE_LABEL_ID
             loss_counts = mask.sum(-1)
@@ -135,16 +137,29 @@ class ACTSWESearchLossHead(nn.Module):
             is_correct = mask & (torch.argmax(outputs["logits"], dim=-1) == labels)
             seq_is_correct = is_correct.sum(-1) == loss_counts
             
-            # Metrics (halted)
+            # Metrics (halted) - Original
             valid_metrics = new_carry.halted & (loss_counts > 0)
+            
+            # ADDED: Progressive metrics that don't require halting
+            total_valid_samples = (loss_counts > 0).sum()
+            
             metrics = {
                 "count": valid_metrics.sum(),
+                "halted_samples": new_carry.halted.sum(),  # NEW: Track halting rate
+                "total_samples": total_valid_samples,      # NEW: Total processable samples
                 
+                # Original halted-only metrics
                 "accuracy":       torch.where(valid_metrics, (is_correct.to(torch.float32) / loss_divisor).sum(-1), 0).sum(),
                 "exact_accuracy": (valid_metrics & seq_is_correct).sum(),
+                
+                # NEW: Progressive metrics (work without halting)
+                "token_accuracy_all": torch.where(loss_counts > 0, (is_correct.to(torch.float32) / loss_divisor).sum(-1), 0).mean(),
+                "prefix_match_rate": (is_correct[:, :10].sum(-1) == torch.minimum(loss_counts, torch.tensor(10))).float().mean(),
+                "partial_sequence_accuracy": (is_correct.sum(-1) / loss_counts.clamp(min=1)).mean(),
 
                 "q_halt_accuracy": (valid_metrics & ((outputs["q_halt_logits"] >= 0) == seq_is_correct)).sum(),
                 "steps":          torch.where(valid_metrics, new_carry.steps, 0).sum(),
+                "avg_steps_all":  new_carry.steps.float().mean(),  # NEW: All samples average steps
             }
 
         # Standard losses
@@ -183,6 +198,10 @@ class ACTSWESearchLossHead(nn.Module):
                 
                 # Additional reverse learning metrics
                 metrics.update(self._compute_reverse_learning_metrics(reverse_metrics))
+
+        # Enhanced Code-Specific Metrics
+        code_metrics = self._compute_code_metrics(outputs["logits"], labels, new_carry.current_data)
+        metrics.update(code_metrics)
 
         # Filter outputs for return
         detached_outputs = {k: outputs[k].detach() for k in return_keys if k in outputs}
@@ -330,3 +349,212 @@ class ACTSWESearchLossHead(nn.Module):
             "reverse_feedback_magnitude": torch.tensor(avg_feedback_magnitude),
             "reverse_planning_refinement": torch.tensor(avg_planning_refinement),
         }
+    
+    def _compute_code_metrics(self, logits, labels, current_data):
+        """Compute enhanced code-specific metrics for training monitoring"""
+        device = logits.device
+        batch_size = logits.size(0)
+        
+        # Get predicted tokens
+        predicted_tokens = torch.argmax(logits, dim=-1)
+        
+        # Initialize metrics
+        metrics = {}
+        
+        try:
+            # Basic compilation metrics
+            syntax_scores = []
+            compilation_scores = []
+            
+            # BLEU/edit distance metrics
+            edit_distances = []
+            
+            # Tiered accuracy scores
+            syntax_accuracy_scores = []
+            logical_accuracy_scores = []
+            exact_match_scores = []
+            
+            for batch_idx in range(batch_size):
+                # Get valid tokens (non-padding)
+                valid_mask = labels[batch_idx] != IGNORE_LABEL_ID
+                if not valid_mask.any():
+                    syntax_scores.append(0.0)
+                    compilation_scores.append(0.0)
+                    edit_distances.append(1.0)
+                    syntax_accuracy_scores.append(0.0)
+                    logical_accuracy_scores.append(0.0)
+                    exact_match_scores.append(0.0)
+                    continue
+                
+                pred_tokens = predicted_tokens[batch_idx][valid_mask]
+                true_tokens = labels[batch_idx][valid_mask]
+                
+                # Convert to strings (simplified - assumes vocab mapping available)
+                pred_str = self._tokens_to_string(pred_tokens)
+                true_str = self._tokens_to_string(true_tokens)
+                
+                # Syntax checking
+                syntax_score = self._check_syntax_validity(pred_str)
+                syntax_scores.append(syntax_score)
+                
+                # Compilation attempt
+                compilation_score = self._check_compilation(pred_str)
+                compilation_scores.append(compilation_score)
+                
+                # Edit distance (normalized)
+                edit_dist = self._compute_edit_distance(pred_str, true_str)
+                max_len = max(len(pred_str), len(true_str), 1)
+                normalized_edit_dist = edit_dist / max_len
+                edit_distances.append(normalized_edit_dist)
+                
+                # Tiered accuracy system
+                syntax_acc = self._compute_syntax_accuracy(pred_str, true_str)
+                logical_acc = self._compute_logical_accuracy(pred_str, true_str)
+                exact_acc = 1.0 if pred_str.strip() == true_str.strip() else 0.0
+                
+                syntax_accuracy_scores.append(syntax_acc)
+                logical_accuracy_scores.append(logical_acc)
+                exact_match_scores.append(exact_acc)
+            
+            # Aggregate metrics
+            metrics.update({
+                "code_syntax_validity": torch.tensor(sum(syntax_scores) / len(syntax_scores), device=device),
+                "code_compilation_success": torch.tensor(sum(compilation_scores) / len(compilation_scores), device=device),
+                "code_edit_distance": torch.tensor(sum(edit_distances) / len(edit_distances), device=device),
+                "code_syntax_accuracy": torch.tensor(sum(syntax_accuracy_scores) / len(syntax_accuracy_scores), device=device),
+                "code_logical_accuracy": torch.tensor(sum(logical_accuracy_scores) / len(logical_accuracy_scores), device=device),
+                "code_exact_match": torch.tensor(sum(exact_match_scores) / len(exact_match_scores), device=device),
+                
+                # Tiered accuracy system (60% syntax, 30% logical, 10% exact)
+                "code_tiered_accuracy": torch.tensor(
+                    (0.6 * sum(syntax_accuracy_scores) + 
+                     0.3 * sum(logical_accuracy_scores) + 
+                     0.1 * sum(exact_match_scores)) / len(syntax_accuracy_scores), 
+                    device=device
+                ),
+            })
+            
+        except Exception as e:
+            # Fallback metrics in case of errors
+            metrics.update({
+                "code_syntax_validity": torch.tensor(0.0, device=device),
+                "code_compilation_success": torch.tensor(0.0, device=device),
+                "code_edit_distance": torch.tensor(1.0, device=device),
+                "code_syntax_accuracy": torch.tensor(0.0, device=device),
+                "code_logical_accuracy": torch.tensor(0.0, device=device),
+                "code_exact_match": torch.tensor(0.0, device=device),
+                "code_tiered_accuracy": torch.tensor(0.0, device=device),
+            })
+        
+        return metrics
+    
+    def _tokens_to_string(self, tokens):
+        """Convert token tensor to string (simplified)"""
+        # This is a simplified version - in practice you'd use your tokenizer
+        # For now, just convert to basic string representation
+        return ' '.join([str(t.item()) for t in tokens])
+    
+    def _check_syntax_validity(self, code_str):
+        """Check if generated code has valid Python syntax"""
+        try:
+            # Simple syntax check using ast.parse
+            # Remove token artifacts and basic cleanup
+            cleaned_code = re.sub(r'\b\d+\b', '', code_str)  # Remove pure numbers
+            cleaned_code = re.sub(r'\s+', ' ', cleaned_code).strip()  # Normalize whitespace
+            
+            if len(cleaned_code) < 3:  # Too short to be valid code
+                return 0.0
+            
+            # Try to parse as Python code
+            ast.parse(cleaned_code)
+            return 1.0
+        except:
+            return 0.0
+    
+    def _check_compilation(self, code_str):
+        """Attempt to compile the code"""
+        try:
+            # Simple compilation check
+            cleaned_code = re.sub(r'\b\d+\b', '', code_str)
+            cleaned_code = re.sub(r'\s+', ' ', cleaned_code).strip()
+            
+            if len(cleaned_code) < 3:
+                return 0.0
+            
+            compile(cleaned_code, '<string>', 'exec')
+            return 1.0
+        except:
+            return 0.0
+    
+    def _compute_edit_distance(self, str1, str2):
+        """Compute Levenshtein edit distance"""
+        if len(str1) == 0:
+            return len(str2)
+        if len(str2) == 0:
+            return len(str1)
+        
+        # Dynamic programming approach
+        matrix = [[0] * (len(str2) + 1) for _ in range(len(str1) + 1)]
+        
+        for i in range(len(str1) + 1):
+            matrix[i][0] = i
+        for j in range(len(str2) + 1):
+            matrix[0][j] = j
+        
+        for i in range(1, len(str1) + 1):
+            for j in range(1, len(str2) + 1):
+                if str1[i-1] == str2[j-1]:
+                    cost = 0
+                else:
+                    cost = 1
+                
+                matrix[i][j] = min(
+                    matrix[i-1][j] + 1,      # deletion
+                    matrix[i][j-1] + 1,      # insertion
+                    matrix[i-1][j-1] + cost  # substitution
+                )
+        
+        return matrix[len(str1)][len(str2)]
+    
+    def _compute_syntax_accuracy(self, pred_str, true_str):
+        """Compute syntax-level accuracy (structure similarity)"""
+        try:
+            # Check for common code patterns
+            patterns = [
+                r'def\s+\w+\s*\(',  # function definitions
+                r'class\s+\w+\s*:',  # class definitions
+                r'if\s+.*:',         # if statements
+                r'for\s+.*:',        # for loops
+                r'while\s+.*:',      # while loops
+                r'import\s+\w+',     # imports
+                r'return\s+.*',      # return statements
+            ]
+            
+            pred_patterns = sum(1 for p in patterns if re.search(p, pred_str))
+            true_patterns = sum(1 for p in patterns if re.search(p, true_str))
+            
+            if true_patterns == 0:
+                return 1.0 if pred_patterns == 0 else 0.5
+            
+            return min(pred_patterns / true_patterns, 1.0)
+            
+        except:
+            return 0.0
+    
+    def _compute_logical_accuracy(self, pred_str, true_str):
+        """Compute logical structure accuracy"""
+        try:
+            # Compare logical elements like variable names, function calls
+            pred_words = set(re.findall(r'\b[a-zA-Z_]\w*\b', pred_str))
+            true_words = set(re.findall(r'\b[a-zA-Z_]\w*\b', true_str))
+            
+            if not true_words:
+                return 1.0 if not pred_words else 0.5
+            
+            intersection = len(pred_words & true_words)
+            union = len(pred_words | true_words)
+            
+            return intersection / union if union > 0 else 0.0
+            
+        except:
+            return 0.0

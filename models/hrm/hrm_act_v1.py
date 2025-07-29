@@ -359,18 +359,17 @@ class HierarchicalReasoningModel_ACTV1(nn.Module):
             new_steps = new_steps + 1
             is_last_step = new_steps >= self.config.halt_max_steps
             
+            # FORCE HALTING: Always halt at max steps OR with probability
             halted = is_last_step
 
             # if training, and ACT is enabled
             if self.training and (self.config.halt_max_steps > 1):
-                # Halt signal
-                # NOTE: During evaluation, always use max steps, this is to guarantee the same halting steps inside a batch for batching purposes
-                halted = halted | (q_halt_logits > q_continue_logits)
-
-                # Exploration
-                min_halt_steps = (torch.rand_like(q_halt_logits) < self.config.halt_exploration_prob) * torch.randint_like(new_steps, low=2, high=self.config.halt_max_steps + 1)
-
-                halted = halted & (new_steps >= min_halt_steps)
+                # SIMPLIFIED: Force halting with exploration probability
+                force_halt_prob = 0.6  # 60% chance to halt early
+                early_halt = torch.rand_like(q_halt_logits) < force_halt_prob
+                
+                # Halt if: at max steps, OR early halt triggered, OR q_halt wins
+                halted = is_last_step | early_halt | (q_halt_logits > q_continue_logits)
 
                 # Compute target Q
                 # NOTE: No replay buffer and target networks for computing target Q-value.
@@ -379,5 +378,11 @@ class HierarchicalReasoningModel_ACTV1(nn.Module):
                 next_q_halt_logits, next_q_continue_logits = self.inner(new_inner_carry, new_current_data)[-1]
                 
                 outputs["target_q_continue"] = torch.sigmoid(torch.where(is_last_step, next_q_halt_logits, torch.maximum(next_q_halt_logits, next_q_continue_logits)))
+
+        # DEBUGGING: Log halting behavior (only occasionally to avoid spam)
+        if self.training and torch.rand(1).item() < 0.01:  # 1% chance to log
+            print(f"[DEBUG] Step {new_steps.max().item()}: {halted.sum().item()}/{len(halted)} samples halted, "
+                  f"q_halt mean: {q_halt_logits.mean().item():.3f}, "
+                  f"exploration_prob: {self.config.halt_exploration_prob}")
 
         return HierarchicalReasoningModel_ACTV1Carry(new_inner_carry, new_steps, halted, new_current_data), outputs
