@@ -1,0 +1,163 @@
+# HRM-AstralDrift Quick Configuration Presets
+# Use these with: python pretrain.py --config-path . --config-name quick_configs/PRESET_NAME
+
+defaults:
+  - cfg_pretrain
+
+# Quick verification run (5 minutes)
+micro_test:
+  data_path: data/micro-test
+  epochs: 50
+  eval_interval: 10
+  global_batch_size: 2
+  project_name: "HRM-MicroTest"
+  run_name: "verification"
+  arch:
+    enable_swe_search: false
+    enable_reverse_learning: false
+
+# Small baseline training (30-60 minutes)
+small_baseline:
+  data_path: data/small-sudoku
+  epochs: 1000
+  eval_interval: 200
+  global_batch_size: 16
+  lr: 7e-5
+  project_name: "HRM-Baseline"
+  run_name: "sudoku-baseline"
+  arch:
+    enable_swe_search: false
+    enable_reverse_learning: false
+
+# Small advanced training (45-90 minutes)
+small_advanced:
+  data_path: data/small-sudoku
+  epochs: 1000
+  eval_interval: 200
+  global_batch_size: 16
+  lr: 7e-5
+  project_name: "HRM-Advanced"
+  run_name: "sudoku-enhanced"
+  arch:
+    enable_swe_search: true
+    enable_reverse_learning: true
+    loss:
+      name: ACTSWESearchLossHead
+      swe_search_weight: 0.2
+      reverse_learning_weight: 0.1
+
+# Code generation training (4-8 hours)
+code_generation:
+  data_path: data/livecodebench-medium
+  epochs: 5000
+  eval_interval: 500
+  global_batch_size: 32
+  lr: 5e-5
+  project_name: "HRM-CodeGen"
+  run_name: "livecodebench-v1"
+  arch:
+    enable_swe_search: true
+    enable_reverse_learning: true
+    loss:
+      name: ACTSWESearchLossHead
+      swe_search_weight: 0.2
+      reverse_learning_weight: 0.1
+
+# Multi-language training
+polyglot_training:
+  data_path: data/polyglot-medium
+  epochs: 8000
+  eval_interval: 800
+  global_batch_size: 24
+  lr: 4e-5
+  project_name: "HRM-Polyglot"
+  run_name: "multi-language-v1"
+  arch:
+    enable_swe_search: true
+    enable_reverse_learning: true
+    seq_len: 512  # Longer sequences for complex code
+    loss:
+      name: ACTSWESearchLossHead
+      swe_search_weight: 0.25
+      reverse_learning_weight: 0.15
+
+# Production scale training (multi-day, 8-GPU)
+production_scale:
+  data_path: data/livecodebench-full
+  epochs: 20000
+  eval_interval: 2000
+  global_batch_size: 384
+  lr: 5e-5
+  project_name: "HRM-Production"
+  run_name: "full-scale-v1"
+  arch:
+    enable_swe_search: true
+    enable_reverse_learning: true
+    H_cycles: 3    # More reasoning cycles
+    L_cycles: 4
+    H_layers: 3    # Deeper architecture
+    L_layers: 3
+    hidden_size: 256  # Larger model
+    loss:
+      name: ACTSWESearchLossHead
+      swe_search_weight: 0.2
+      reverse_learning_weight: 0.1
+
+# Memory-efficient training (for limited GPU memory)
+memory_efficient:
+  data_path: data/small-sudoku
+  epochs: 2000
+  eval_interval: 400
+  global_batch_size: 8
+  lr: 7e-5
+  project_name: "HRM-MemoryEfficient"
+  run_name: "low-memory"
+  arch:
+    enable_swe_search: true
+    enable_reverse_learning: false  # Disable to save memory
+    seq_len: 64    # Shorter sequences
+    hidden_size: 128  # Smaller model
+    H_layers: 2
+    L_layers: 2
+    forward_dtype: bfloat16  # Use mixed precision
+    loss:
+      name: ACTSWESearchLossHead
+      swe_search_weight: 0.15
+
+# CPU-only training (very slow, for testing)
+cpu_only:
+  data_path: data/micro-test
+  epochs: 100
+  eval_interval: 25
+  global_batch_size: 1
+  lr: 1e-4
+  project_name: "HRM-CPU"
+  run_name: "cpu-test"
+  arch:
+    enable_swe_search: false
+    enable_reverse_learning: false
+    hidden_size: 64   # Very small model
+    H_layers: 1
+    L_layers: 1
+    forward_dtype: float32
+
+# Debug configuration (for development)
+debug:
+  data_path: data/micro-test
+  epochs: 10
+  eval_interval: 2
+  global_batch_size: 1
+  lr: 1e-3
+  project_name: "HRM-Debug"
+  run_name: "debug-session"
+  arch:
+    enable_swe_search: true
+    enable_reverse_learning: true
+    halt_max_steps: 2  # Minimal computation
+    H_cycles: 1
+    L_cycles: 1
+    hidden_size: 32   # Tiny model for fast debugging
+    loss:
+      name: ACTSWESearchLossHead
+      swe_search_weight: 0.1
+      reverse_learning_weight: 0.05
