@@ -84,9 +84,11 @@ class ReverseLearningModule(nn.Module):
         self.insight_quality_assessor = nn.Linear(self.insight_dim, 1)
         
         # Attention mechanism for selective insight focus
+        # Ensure at least 1 head, but use quarter of available heads for efficiency
+        insight_heads = max(1, config.num_heads // 4)
         self.insight_attention = nn.MultiheadAttention(
             self.hidden_size, 
-            num_heads=config.num_heads // 4,
+            num_heads=insight_heads,
             batch_first=True
         )
         

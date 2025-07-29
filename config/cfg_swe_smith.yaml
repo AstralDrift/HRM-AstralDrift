@@ -1,0 +1,35 @@
+# SWE-smith Code Generation Training Config
+
+defaults:
+  - arch: hrm_swe_search
+  - _self_
+
+hydra:
+  output_subdir: null
+
+# Data path for SWE-smith dataset
+data_path: data/swe-smith-1k-hrm
+
+# Hyperparams - Training
+global_batch_size: 24  # Smaller for complex code tasks
+epochs: 3000
+eval_interval: 500
+checkpoint_every_eval: true
+
+# Learning rate optimized for code generation
+lr: 4e-5
+lr_min_ratio: 0.1
+lr_warmup_steps: 1000
+
+# Optimized hyperparameters for code generation
+beta1: 0.9
+beta2: 0.95
+weight_decay: 0.1
+puzzle_emb_weight_decay: 0.1
+
+# Puzzle embeddings training
+puzzle_emb_lr: 1e-3
+
+# W&B configuration
+project_name: HRM-SWE-Smith-1K
+run_name: sophisticated-github-issues-v1

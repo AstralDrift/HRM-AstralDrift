@@ -33,7 +33,10 @@ except ImportError:
     swe_registry = None
     RepoProfile = None
 
-# HRM imports
+# HRM imports  
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
 from dataset.common import PuzzleDatasetMetadata
 
 
@@ -159,7 +162,7 @@ class ComplexityAnalyzer:
         }
         
         complexity_score = sum(
-            indicators[key] * weights[key] 
+            complexity_indicators[key] * weights[key] 
             for key in complexity_indicators
         )
         
@@ -897,7 +900,7 @@ The function crashes with unhandled exceptions.
             agent_assignments = self._generate_agent_assignments(task_analysis, raw_task)
             
             # Generate hierarchical training data structure
-            hierarchical_data = self._generate_hierarchical_data(task_analysis, raw_task)
+            hierarchical_data = self._generate_hierarchical_data(task_analysis, raw_task, agent_assignments)
             
             # Create training instance
             instance = HRMTrainingInstance(
@@ -1024,7 +1027,8 @@ The function crashes with unhandled exceptions.
     def _generate_hierarchical_data(
         self, 
         task_analysis: TaskAnalysis, 
-        raw_task: Dict[str, Any]
+        raw_task: Dict[str, Any],
+        agent_assignments: List[AgentAssignment]
     ) -> Dict[str, Any]:
         """Generate hierarchical training data structure for HRM"""
         
@@ -1043,7 +1047,7 @@ The function crashes with unhandled exceptions.
                             'priority': assignment.priority,
                             'dependencies': assignment.dependencies
                         }
-                        for assignment in task_analysis.estimated_agents_needed
+                        for assignment in agent_assignments
                     ],
                     'coordination_strategy': task_analysis.coordination_needs,
                     'synchronization_points': task_analysis.coordination_needs.get('synchronization_points', [])
@@ -1137,16 +1141,17 @@ class HRMSWESmithDataset:
         with open(dataset_file, 'w') as f:
             json.dump(hrm_data, f, indent=2)
         
-        # Create metadata
+        # Create metadata with all required fields
         metadata = PuzzleDatasetMetadata(
-            puzzle_type="swe_smith_code_generation",
-            num_instances=len(hrm_data),
-            input_vocab_size=50000,  # Approximate for code
-            output_vocab_size=50000,
-            max_input_length=2048,
-            max_output_length=1024,
-            puzzle_identifiers=puzzle_identifiers,
-            has_puzzle_embeddings=True
+            pad_id=0,  # Standard padding token
+            ignore_label_id=-100,  # Standard ignore token for loss calculation
+            blank_identifier_id=0,  # Standard blank puzzle identifier
+            vocab_size=50000,  # Approximate for code tokenization
+            seq_len=2048,  # Maximum sequence length
+            num_puzzle_identifiers=len(set(puzzle_identifiers)),  # Number of unique puzzle types
+            total_groups=1,  # Single group for SWE-smith tasks
+            mean_puzzle_examples=float(len(hrm_data)),  # Average examples per puzzle type
+            sets=['train', 'test']  # Available dataset splits
         )
         
         # Save metadata

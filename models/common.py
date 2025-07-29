@@ -3,6 +3,15 @@ import math
 import torch
 from torch import nn
 
+def get_optimal_device():
+    """Get the best available device for tensor operations."""
+    if torch.cuda.is_available():
+        return 'cuda'
+    elif torch.backends.mps.is_available():
+        return 'mps'
+    else:
+        return 'cpu'
+
 
 def trunc_normal_init_(tensor: torch.Tensor, std: float = 1.0, lower: float = -2.0, upper: float = 2.0):
     # NOTE: PyTorch nn.init.trunc_normal_ is not mathematically correct, the std dev is not actually the std dev of initialized tensor
@@ -24,6 +33,10 @@ def trunc_normal_init_(tensor: torch.Tensor, std: float = 1.0, lower: float = -2
             pdf_l = c * math.exp(-0.5 * upper ** 2)
             comp_std = std / math.sqrt(1 - (upper * pdf_u - lower * pdf_l) / z - ((pdf_u - pdf_l) / z) ** 2)
 
+            # Ensure tensor is on the optimal device
+            device = get_optimal_device()
+            tensor = tensor.to(device)
+                
             tensor.uniform_(a, b)
             tensor.erfinv_()
             tensor.mul_(sqrt2 * comp_std)

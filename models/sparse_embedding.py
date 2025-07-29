@@ -15,15 +15,18 @@ class CastedSparseEmbedding(nn.Module):
 
         # Real Weights
         # Truncated LeCun normal init
+        # Use optimal device detection
+        from models.common import get_optimal_device
+        device = get_optimal_device()
         self.weights = nn.Buffer(
-            trunc_normal_init_(torch.empty((num_embeddings, embedding_dim)), std=init_std), persistent=True
+            trunc_normal_init_(torch.empty((num_embeddings, embedding_dim), device=device), std=init_std), persistent=True
         )
 
         # Local weights and IDs
         # Local embeddings, with gradient, not persistent
-        self.local_weights = nn.Buffer(torch.zeros(batch_size, embedding_dim, requires_grad=True), persistent=False)
+        self.local_weights = nn.Buffer(torch.zeros(batch_size, embedding_dim, requires_grad=True, device=device), persistent=False)
         # Local embedding IDs, not persistent
-        self.local_ids = nn.Buffer(torch.zeros(batch_size, dtype=torch.int32), persistent=False)
+        self.local_ids = nn.Buffer(torch.zeros(batch_size, dtype=torch.int32, device=device), persistent=False)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         if not self.training:

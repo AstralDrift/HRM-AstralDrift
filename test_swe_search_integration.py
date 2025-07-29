@@ -63,10 +63,18 @@ def create_test_batch(config):
     seq_len = config.seq_len
     vocab_size = config.vocab_size
     
+    # Use optimal device
+    if torch.cuda.is_available():
+        device = 'cuda'
+    elif torch.backends.mps.is_available():
+        device = 'mps'
+    else:
+        device = 'cpu'
+    
     return {
-        'inputs': torch.randint(0, vocab_size, (batch_size, seq_len)),
-        'labels': torch.randint(0, vocab_size, (batch_size, seq_len)),
-        'puzzle_identifiers': torch.zeros((batch_size,), dtype=torch.long)
+        'inputs': torch.randint(0, vocab_size, (batch_size, seq_len), device=device),
+        'labels': torch.randint(0, vocab_size, (batch_size, seq_len), device=device),
+        'puzzle_identifiers': torch.zeros((batch_size,), dtype=torch.long, device=device)
     }
 
 
@@ -77,6 +85,15 @@ def test_swe_search_controller():
     try:
         config = create_test_config()
         controller = SWESearchController(config)
+        
+        # Move to correct device
+        if torch.cuda.is_available():
+            device = 'cuda'
+        elif torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
+        controller = controller.to(device)
         
         # Test basic initialization
         assert hasattr(controller, 'state_evaluator')
@@ -141,6 +158,14 @@ def test_hrm_integration():
     try:
         config = create_test_config()
         model = HierarchicalReasoningModel_ACTV1(config.__dict__)
+        # Move to correct device
+        if torch.cuda.is_available():
+            device = 'cuda'
+        elif torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
+        model = model.to(device)
         
         # Test model has SWE-Search components
         assert hasattr(model.inner, 'swe_search_controller')
@@ -185,6 +210,14 @@ def test_loss_integration():
     try:
         config = create_test_config()
         model = HierarchicalReasoningModel_ACTV1(config.__dict__)
+        # Move to correct device
+        if torch.cuda.is_available():
+            device = 'cuda'
+        elif torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
+        model = model.to(device)
         
         # Create loss head
         loss_head = ACTSWESearchLossHead(model, 'softmax_cross_entropy', swe_search_weight=0.2)
@@ -236,6 +269,14 @@ def test_evaluator():
     try:
         config = create_test_config()
         model = HierarchicalReasoningModel_ACTV1(config.__dict__)
+        # Move to correct device
+        if torch.cuda.is_available():
+            device = 'cuda'
+        elif torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
+        model = model.to(device)
         
         # Create evaluator with CPU device if CUDA not available
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -297,6 +338,14 @@ def test_performance_targets():
     try:
         config = create_test_config()
         model = HierarchicalReasoningModel_ACTV1(config.__dict__)
+        # Move to correct device
+        if torch.cuda.is_available():
+            device = 'cuda'
+        elif torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
+        model = model.to(device)
         
         # Memory usage test (if psutil available)
         memory_overhead = 0

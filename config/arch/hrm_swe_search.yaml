@@ -1,0 +1,32 @@
+name: hrm.hrm_act_v1@HierarchicalReasoningModel_ACTV1
+loss:
+  name: losses@ACTSWESearchLossHead
+  loss_type: stablemax_cross_entropy
+  swe_search_weight: 0.3
+  reverse_learning_weight: 0.2
+
+# Enhanced configuration for code generation
+halt_exploration_prob: 0.15  # Higher exploration for code diversity
+halt_max_steps: 20  # More steps for complex code reasoning
+
+# More reasoning cycles for sophisticated code generation
+H_cycles: 3  
+L_cycles: 4
+
+# Larger architecture for code complexity
+H_layers: 6
+L_layers: 6
+
+hidden_size: 768  # Larger for code representation
+num_heads: 12
+expansion: 4
+
+puzzle_emb_ndim: ${.hidden_size}
+
+# Note: seq_len is set by dataset metadata
+
+# Enable advanced features
+enable_swe_search: true
+enable_reverse_learning: true
+
+pos_encodings: rope

@@ -191,13 +191,30 @@ def check_model_creation():
         
         # Create model
         model = HierarchicalReasoningModel_ACTV1(config.__dict__)
+        
+        # Move model to correct device
+        if torch.cuda.is_available():
+            device = 'cuda'
+        elif torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
+        model = model.to(device)
         print_success("Base model creation successful")
         
         # Test forward pass
+        # Use same device as model
+        if torch.cuda.is_available():
+            device = 'cuda'
+        elif torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
+            
         batch = {
-            'inputs': torch.randint(0, 100, (2, 32)),
-            'labels': torch.randint(0, 100, (2, 32)),
-            'puzzle_identifiers': torch.zeros((2,), dtype=torch.long)
+            'inputs': torch.randint(0, 100, (2, 32), device=device),
+            'labels': torch.randint(0, 100, (2, 32), device=device),
+            'puzzle_identifiers': torch.zeros((2,), dtype=torch.long, device=device)
         }
         
         carry = model.initial_carry(batch)
@@ -267,11 +284,15 @@ def check_dataset_builders():
         'dataset/polyglot_benchmark_extractor.py'
     ]
     
+    all_exist = True
     for builder in builders:
         if Path(builder).exists():
             print_success(f"{builder} exists")
         else:
             print_warning(f"{builder} not found")
+            all_exist = False
+    
+    return all_exist
 
 def suggest_next_steps(all_checks_passed):
     """Suggest next steps based on results"""

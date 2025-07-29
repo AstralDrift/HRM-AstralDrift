@@ -54,13 +54,16 @@ class CastedLinear(nn.Module):
                  bias: bool):
         super().__init__()
         # Truncated LeCun normal init
+        # Use optimal device detection
+        from models.common import get_optimal_device
+        device = get_optimal_device()
         self.weight = nn.Parameter(
-            trunc_normal_init_(torch.empty((out_features, in_features)), std=1.0 / (in_features ** 0.5))
+            trunc_normal_init_(torch.empty((out_features, in_features), device=device), std=1.0 / (in_features ** 0.5))
         )
         self.bias = None
         if bias:
             # Zero init bias
-            self.bias = nn.Parameter(torch.zeros((out_features, )))
+            self.bias = nn.Parameter(torch.zeros((out_features, ), device=device))
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return F.linear(input, self.weight.to(input.dtype), bias=self.bias.to(input.dtype) if self.bias is not None else None)
@@ -76,8 +79,11 @@ class CastedEmbedding(nn.Module):
         self.cast_to = cast_to
 
         # Truncated LeCun normal init
+        # Use optimal device detection
+        from models.common import get_optimal_device
+        device = get_optimal_device()
         self.embedding_weight = nn.Parameter(
-            trunc_normal_init_(torch.empty((num_embeddings, embedding_dim)), std=init_std)
+            trunc_normal_init_(torch.empty((num_embeddings, embedding_dim), device=device), std=init_std)
         )
         
     def forward(self, input: torch.Tensor) -> torch.Tensor:
@@ -87,6 +93,11 @@ class CastedEmbedding(nn.Module):
 class RotaryEmbedding(nn.Module):
     def __init__(self, dim, max_position_embeddings, base, device=None):
         super().__init__()
+
+        # Use optimal device if not specified
+        if device is None:
+            from models.common import get_optimal_device
+            device = get_optimal_device()
 
         # RoPE
         inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2, dtype=torch.float32, device=device) / dim))

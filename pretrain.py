@@ -16,7 +16,12 @@ import coolname
 import hydra
 import pydantic
 from omegaconf import DictConfig
-from adam_atan2 import AdamATan2
+# Fallback to torch.optim.Adam if adam_atan2 is not available
+try:
+    from adam_atan2 import AdamATan2
+except ImportError:
+    print("adam_atan2 not available, using torch.optim.Adam as fallback")
+    AdamATan2 = torch.optim.Adam
 
 from puzzle_dataset import PuzzleDataset, PuzzleDatasetConfig, PuzzleDatasetMetadata
 from utils.functions import load_model_class, get_model_source_path
@@ -121,7 +126,14 @@ def create_model(config: PretrainConfig, train_metadata: PuzzleDatasetMetadata, 
     model_cls = load_model_class(config.arch.name)
     loss_head_cls = load_model_class(config.arch.loss.name)
 
-    with torch.device("cuda"):
+    # Universal device detection
+    if torch.cuda.is_available():
+        device = 'cuda'
+    elif torch.backends.mps.is_available():
+        device = 'mps'
+    else:
+        device = 'cpu'
+    with torch.device(device):
         model: nn.Module = model_cls(model_cfg)
         model = loss_head_cls(model, **config.arch.loss.__pydantic_extra__)  # type: ignore
         if "DISABLE_COMPILE" not in os.environ:
@@ -211,12 +223,18 @@ def train_batch(config: PretrainConfig, train_state: TrainState, batch: Any, glo
     if train_state.step > train_state.total_steps:  # At most train_total_steps
         return
 
-    # To device
-    batch = {k: v.cuda() for k, v in batch.items()}
+    # To device - universal device detection
+    if torch.cuda.is_available():
+        device = 'cuda'
+    elif torch.backends.mps.is_available():
+        device = 'mps'
+    else:
+        device = 'cpu'
+    batch = {k: v.to(device) for k, v in batch.items()}
 
     # Init carry if it is None
     if train_state.carry is None:
-        with torch.device("cuda"):
+        with torch.device(device):
             train_state.carry = train_state.model.initial_carry(batch)  # type: ignore
 
     # Forward
@@ -287,9 +305,15 @@ def evaluate(config: PretrainConfig, train_state: TrainState, eval_loader: torch
         
         carry = None
         for set_name, batch, global_batch_size in eval_loader:
-            # To device
-            batch = {k: v.cuda() for k, v in batch.items()}
-            with torch.device("cuda"):
+            # To device - universal device detection
+            if torch.cuda.is_available():
+                device = 'cuda'
+            elif torch.backends.mps.is_available():
+                device = 'mps'
+            else:
+                device = 'cpu'
+            batch = {k: v.to(device) for k, v in batch.items()}
+            with torch.device(device):
                 carry = train_state.model.initial_carry(batch)  # type: ignore
 
             # Forward
@@ -312,7 +336,14 @@ def evaluate(config: PretrainConfig, train_state: TrainState, eval_loader: torch
             
             if metric_values is None:
                 metric_keys = list(sorted(metrics.keys()))  # Sort keys to guarantee all processes use the same order.
-                metric_values = torch.zeros((len(set_ids), len(metrics.values())), dtype=torch.float32, device="cuda")
+                # Universal device detection
+                if torch.cuda.is_available():
+                    device = 'cuda'
+                elif torch.backends.mps.is_available():
+                    device = 'mps'
+                else:
+                    device = 'cpu'
+                metric_values = torch.zeros((len(set_ids), len(metrics.values())), dtype=torch.float32, device=device)
                 
             metric_values[set_id] += torch.stack([metrics[k] for k in metric_keys])
             metric_global_batch_size[set_id] += global_batch_size
