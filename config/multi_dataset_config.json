@@ -1,0 +1,252 @@
+{
+  "datasets": {
+    "tested_python_alpaca": {
+      "name": "Tested-143k-Python-Alpaca",
+      "path": "data/tested_python_alpaca",
+      "format": "json",
+      "size": 143327,
+      "weight": 0.4,
+      "phase": 1,
+      "difficulty": 0.3,
+      "features": [
+        "coding",
+        "python",
+        "verified"
+      ]
+    },
+    "glaive_function_calling": {
+      "name": "Glaive-Function-Calling-v2.1",
+      "path": "data/glaive_function_calling",
+      "format": "json",
+      "size": 118000,
+      "weight": 0.3,
+      "phase": 1,
+      "difficulty": 0.4,
+      "features": [
+        "tool_use",
+        "function_calling",
+        "multilingual"
+      ]
+    },
+    "agent_instruct": {
+      "name": "AgentInstruct-1M-CoT",
+      "path": "data/agent_instruct_1m",
+      "format": "json",
+      "size": 999465,
+      "weight": 0.3,
+      "phase": 1,
+      "difficulty": 0.5,
+      "features": [
+        "hierarchical_reasoning",
+        "cot_enhanced",
+        "agent_coordination",
+        "multi_turn"
+      ]
+    },
+    "toolbench_v2": {
+      "name": "ToolBench-v2.0",
+      "path": "data/toolbench_v2",
+      "format": "json",
+      "size": 18000,
+      "weight": 0.3,
+      "phase": 2,
+      "difficulty": 0.6,
+      "features": [
+        "tool_use",
+        "multi_tool",
+        "failure_handling"
+      ]
+    },
+    "api_bench": {
+      "name": "APIBench-v1.2",
+      "path": "data/api_bench",
+      "format": "json",
+      "size": 1800,
+      "weight": 0.2,
+      "phase": 2,
+      "difficulty": 0.7,
+      "features": [
+        "api_calls",
+        "noise_injection",
+        "robust"
+      ]
+    },
+    "magicoder_evol": {
+      "name": "Magicoder-Evol-Instruct-110K",
+      "path": "data/magicoder_evol",
+      "format": "json",
+      "size": 110000,
+      "weight": 0.25,
+      "phase": 2,
+      "difficulty": 0.6,
+      "features": [
+        "code_evolution",
+        "debugging",
+        "iterative"
+      ]
+    },
+    "code_feedback": {
+      "name": "CodeFeedback-Filtered-Instruction",
+      "path": "data/code_feedback",
+      "format": "json",
+      "size": 156000,
+      "weight": 0.25,
+      "phase": 2,
+      "difficulty": 0.7,
+      "features": [
+        "feedback_loops",
+        "plan_code_test",
+        "filtered"
+      ]
+    },
+    "mle_bench": {
+      "name": "MLE-Bench",
+      "path": "data/mle_bench",
+      "format": "json",
+      "size": 85,
+      "weight": 0.4,
+      "phase": 3,
+      "difficulty": 0.8,
+      "features": [
+        "ml_pipelines",
+        "end_to_end",
+        "kaggle"
+      ]
+    },
+    "api_bench_expanded": {
+      "name": "APIBench-Expanded",
+      "path": "data/api_bench_expanded",
+      "format": "json",
+      "size": 10000,
+      "weight": 0.6,
+      "phase": 3,
+      "difficulty": 0.8,
+      "features": [
+        "tool_orchestration",
+        "synthetic",
+        "scale"
+      ]
+    },
+    "gaia_expanded": {
+      "name": "GAIA-Expanded",
+      "path": "data/gaia_expanded",
+      "format": "json",
+      "size": 10000,
+      "weight": 0.4,
+      "phase": 4,
+      "difficulty": 0.9,
+      "features": [
+        "multimodal",
+        "tool_use",
+        "complex_reasoning"
+      ]
+    },
+    "agent_flan": {
+      "name": "Agent-FLAN",
+      "path": "data/agent_flan",
+      "format": "json",
+      "size": 34000,
+      "weight": 0.3,
+      "phase": 4,
+      "difficulty": 0.8,
+      "features": [
+        "multi_agent",
+        "coordination",
+        "filtered"
+      ]
+    },
+    "swe_bench_hard": {
+      "name": "SWE-Bench-Hard",
+      "path": "data/swe_bench_hard",
+      "format": "json",
+      "size": 100,
+      "weight": 0.3,
+      "phase": 4,
+      "difficulty": 1.0,
+      "features": [
+        "real_world",
+        "github",
+        "complex"
+      ]
+    }
+  },
+  "phases": {
+    "1": {
+      "phase_id": 1,
+      "name": "Foundation Building",
+      "epochs": [
+        5,
+        20
+      ],
+      "datasets": [
+        "tested_python_alpaca",
+        "glaive_function_calling",
+        "agent_instruct"
+      ],
+      "target_metrics": {
+        "token_accuracy": 0.5,
+        "compilation_success": 1.0,
+        "loss": 15.0
+      },
+      "description": "Build robust tool-use and coding fundamentals"
+    },
+    "2": {
+      "phase_id": 2,
+      "name": "Advanced Tool Use",
+      "epochs": [
+        21,
+        50
+      ],
+      "datasets": [
+        "toolbench_v2",
+        "api_bench",
+        "magicoder_evol",
+        "code_feedback"
+      ],
+      "target_metrics": {
+        "loss": 1.2,
+        "swe_search_candidates": 15.0,
+        "tiered_accuracy": 0.25
+      },
+      "description": "Master complex tool chains and multi-step reasoning"
+    },
+    "3": {
+      "phase_id": 3,
+      "name": "RLHF & Autonomous",
+      "epochs": [
+        51,
+        80
+      ],
+      "datasets": [
+        "mle_bench",
+        "code_feedback",
+        "api_bench_expanded"
+      ],
+      "target_metrics": {
+        "loss": 0.8,
+        "tiered_accuracy": 0.8,
+        "reverse_integration_gate": 0.7
+      },
+      "description": "Optimize hierarchical reasoning and autonomy"
+    },
+    "4": {
+      "phase_id": 4,
+      "name": "Multimodal Polish",
+      "epochs": [
+        81,
+        100
+      ],
+      "datasets": [
+        "gaia_expanded",
+        "agent_flan",
+        "swe_bench_hard"
+      ],
+      "target_metrics": {
+        "loss": 1.0,
+        "tiered_accuracy": 0.95,
+        "compilation_success": 1.0
+      },
+      "description": "Achieve SOTA performance across all benchmarks"
+    }
+  }
+}

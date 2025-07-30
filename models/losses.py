@@ -115,13 +115,13 @@ class ACTSWESearchLossHead(nn.Module):
         self.swe_search_weight = swe_search_weight
         self.reverse_learning_weight = reverse_learning_weight
         
+        # Debug flag for logging
+        self._tokenizer_debug = True
+        
         # Enhanced tokenizer handling with validation
         self.tokenizer = None
         if tokenizer is not None:
             self.set_tokenizer(tokenizer)
-        
-        # Debug flag for logging
-        self._tokenizer_debug = True
         
     def set_tokenizer(self, tokenizer):
         """Set tokenizer with validation for code metrics computation"""

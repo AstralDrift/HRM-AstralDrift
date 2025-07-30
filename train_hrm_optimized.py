@@ -111,6 +111,9 @@ class OptimizedCodeGenerationTrainer:
             eps=1e-8
         )
         
+        # Mixed precision scaler for FlashAttention compatibility
+        self.scaler = torch.cuda.amp.GradScaler() if self.device == 'cuda' else None
+        
         # Learning rate scheduler
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
             self.optimizer,
@@ -222,25 +225,38 @@ class OptimizedCodeGenerationTrainer:
             self.optimizer.zero_grad()
             
             try:
-                new_carry, loss, metrics, outputs, all_halted = self.loss_fn(
-                    return_keys=['logits'],
-                    carry=carry,
-                    batch=batch
-                )
+                # Use mixed precision for forward pass
+                if self.scaler:
+                    with torch.cuda.amp.autocast():
+                        new_carry, loss, metrics, outputs, all_halted = self.loss_fn(
+                            return_keys=['logits'],
+                            carry=carry,
+                            batch=batch
+                        )
+                else:
+                    new_carry, loss, metrics, outputs, all_halted = self.loss_fn(
+                        return_keys=['logits'],
+                        carry=carry,
+                        batch=batch
+                    )
                 
                 # Check for NaN loss
                 if torch.isnan(loss) or torch.isinf(loss):
                     self.logger.warning(f"NaN/Inf loss detected at step {self.global_step}, skipping batch")
                     continue
                 
-                # Backward pass
-                loss.backward()
+                # Backward pass with mixed precision
+                if self.scaler:
+                    self.scaler.scale(loss).backward()
+                    self.scaler.unscale_(self.optimizer)
+                    grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                else:
+                    loss.backward()
+                    grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                    self.optimizer.step()
                 
-                # Gradient clipping with adaptive threshold
-                grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-                
-                # Optimizer step
-                self.optimizer.step()
                 self.scheduler.step()
                 
                 # Update metrics

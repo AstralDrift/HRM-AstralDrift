@@ -71,7 +71,13 @@ class CodeGenerationDataset(Dataset):
     
     def _load_instances(self) -> List[Dict[str, Any]]:
         """Load code generation instances"""
-        instances_file = self.dataset_path / "instances.json"
+        # Handle both directory structure and direct JSON file
+        if self.dataset_path.is_file() and self.dataset_path.suffix == '.json':
+            # Direct JSON file
+            instances_file = self.dataset_path
+        else:
+            # Directory structure with instances.json
+            instances_file = self.dataset_path / "instances.json"
         
         if not instances_file.exists():
             raise FileNotFoundError(f"Instances file not found: {instances_file}")
@@ -160,7 +166,7 @@ class CodeGenerationDataset(Dataset):
         result = {
             'inputs': combined_sequence,
             'labels': labels,
-            'puzzle_identifiers': torch.tensor([instance['puzzle_id']], dtype=torch.long)
+            'puzzle_identifiers': torch.tensor([hash(instance.get('instance_id', f'instance_{idx}')) % 10000], dtype=torch.long)
         }
         
         # Add coordination data if requested

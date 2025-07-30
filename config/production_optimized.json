@@ -1,0 +1,28 @@
+{
+  "data_path": "data/swe_smith_training",
+  "epochs": 100,
+  "batch_size": 6,
+  "learning_rate": 4e-05,
+  "hidden_size": 512,
+  "use_wandb": false,
+  "run_name": "hrm-production-swe-smith-optimized",
+  "project_name": "HRM-Code-Generation-Production",
+  "checkpoint_interval": 10,
+  "weight_decay": 0.2,
+  "swe_search_weight": 0.2,
+  "reverse_learning_weight": 0.1,
+  "H_cycles": 1,
+  "L_cycles": 2,
+  "halt_max_steps": 6,
+  "halt_exploration_prob": 0.5,
+  "swe_search_candidates": 15,
+  "scheduler_t0": 50,
+  "max_batches_per_epoch": null,
+  "loss_type": "softmax_cross_entropy",
+  "convergence_criteria": {
+    "target_loss": 0.3,
+    "target_compilation_success": 0.5,
+    "target_tiered_accuracy": 0.99,
+    "patience_epochs": 20
+  }
+}
