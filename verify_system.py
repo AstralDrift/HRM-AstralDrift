@@ -112,9 +112,9 @@ def check_project_structure():
         'models/hrm/swe_search_integration.py', 
         'models/hrm/reverse_learning.py',
         'models/losses.py',
-        'pretrain.py',
+        'train_hrm_optimized.py',
         'evaluate.py',
-        'puzzle_dataset.py',
+        'code_generation_dataset.py',
         'test_swe_search_integration.py',
         'test_reverse_learning_integration.py'
     ]

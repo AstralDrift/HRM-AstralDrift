@@ -1,0 +1,17 @@
+{
+  "timestamp": 1753908070.235817,
+  "system_info": {
+    "python_version": "2.2.1",
+    "torch_version": "2.2.1",
+    "cuda_available": false,
+    "mps_available": true
+  },
+  "system_stats": {
+    "memory_used_gb": 13.851699829101562,
+    "memory_available_gb": 15.495315551757812,
+    "memory_percent": 51.6,
+    "mps_available": true
+  },
+  "error_history": [],
+  "error_summary": {}
+}

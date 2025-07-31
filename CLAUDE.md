@@ -15,28 +15,23 @@
 - `models/hrm/hrm_act_v1.py` - Main HRM model implementation with ACT (Adaptive Computation Time) wrapper
 - `pretrain.py` - Training pipeline with distributed support
 - `evaluate.py` - Evaluation pipeline for trained models
-- `puzzle_dataset.py` - Dataset handling for reasoning tasks
+- `code_generation_dataset.py` - Dataset handling for code generation tasks
 
 ### Supported Tasks
 
-#### Original Reasoning Tasks
-1. **ARC-AGI** (Abstraction and Reasoning Corpus) - Key AGI benchmark
-2. **Sudoku** - Complex 9x9 extreme puzzles
-3. **Maze** - Optimal pathfinding in large mazes
-
-#### NEW: Code Generation & Tool Use Tasks
-4. **LiveCodeBench** - 400+ coding challenges from LeetCode, AtCoder, CodeForces
+#### Code Generation & Tool Use Tasks
+1. **LiveCodeBench** - 400+ coding challenges from LeetCode, AtCoder, CodeForces
    - Code generation, self-repair, test prediction, execution scenarios
    - Target: pass@1 and pass@5 metrics with contamination-free evaluation
-5. **Polyglot Benchmark** - 225 challenging Exercism problems across 6 languages
+2. **Polyglot Benchmark** - 225 challenging Exercism problems across 6 languages
    - C++, Go, Java, JavaScript, Python, Rust
    - Diff-based code editing (search-replace operations)
    - Target: >80% success rate across all languages
-6. **SWE-bench** - Real-world GitHub issue resolution
+3. **SWE-bench** - Real-world GitHub issue resolution
    - 2,294 software engineering problems from 12 popular Python repositories
    - Multi-file patch generation for bug fixes and feature implementations
    - Current SOTA: 75%+ (TRAE, Claude 4), Target: >60% success rate with <100M parameters
-7. **CLI & Tool Use** - Development workflow automation
+4. **CLI & Tool Use** - Development workflow automation
    - Git operations, package managers, build systems, debugging tools
    - Multi-step complex development workflows
 
@@ -57,12 +52,26 @@
 
 ### Training Commands
 ```bash
-# Sudoku (laptop GPU friendly)
-python dataset/build_sudoku_dataset.py --output-dir data/sudoku-extreme-1k-aug-1000 --subsample-size 1000 --num-aug 1000
-OMP_NUM_THREADS=8 python pretrain.py data_path=data/sudoku-extreme-1k-aug-1000 epochs=20000 eval_interval=2000 global_batch_size=384 lr=7e-5 puzzle_emb_lr=7e-5 weight_decay=1.0 puzzle_emb_weight_decay=1.0
+# Mixed Training (recommended - 70% SWE-Smith + 30% LiveCodeBench)
+python train_hrm_optimized.py --epochs 40 --batch-size 6 --learning-rate 4e-5 --data-path mixed
 
-# ARC-AGI (8-GPU setup)
-OMP_NUM_THREADS=8 torchrun --nproc-per-node 8 pretrain.py data_path=data/arc-2-aug-1000
+# RTX 4090 Optimized Training (maximum performance)
+./launch_rtx4090_training.sh
+
+# Manual optimized training with all features
+python train_hrm_optimized.py --epochs 40 --batch-size 8 --learning-rate 4e-5 --data-path mixed --mixed-precision --gradient-checkpointing
+```
+
+### Hardware Optimization
+```bash
+# Setup RTX 4090 optimizations
+python utils/rtx4090_optimization.py
+
+# Monitor GPU during training (run in separate terminal)
+python monitor_rtx4090.py
+
+# Verify system setup
+python test_memory_optimizations.py
 ```
 
 ### Dependencies
@@ -72,7 +81,7 @@ OMP_NUM_THREADS=8 torchrun --nproc-per-node 8 pretrain.py data_path=data/arc-2-a
 - Standard ML libraries (einops, tqdm, pydantic, etc.)
 
 ### Model Checkpoints
-- Available on HuggingFace: ARC-AGI-2, Sudoku Extreme, Maze 30x30 Hard
+- Available on HuggingFace: LiveCodeBench-Optimized, SWE-Smith-1k, Polyglot-Benchmark
 
 ## Technical Notes
 - Uses `HierarchicalReasoningModel_ACTV1` as main model class
@@ -81,13 +90,13 @@ OMP_NUM_THREADS=8 torchrun --nproc-per-node 8 pretrain.py data_path=data/arc-2-a
 - Non-autoregressive architecture (causal=False)
 - RMSNorm + SwiGLU activation
 - Rotary or learned positional embeddings
-- Sparse puzzle embeddings for task-specific adaptation
+- Dynamic code embeddings for multi-language support
 
 ## For Training New Models
-1. Build dataset using appropriate `dataset/build_*_dataset.py` script
-2. Use `pretrain.py` with proper config (see `config/cfg_pretrain.yaml`)
+1. Use `train_hrm_optimized.py` with appropriate dataset path
+2. Configure with `config/arch/hrm_swe_search.yaml` for advanced features
 3. Monitor with W&B
-4. Evaluate with `evaluate.py` and `arc_eval.ipynb` for ARC tasks
+4. Evaluate with `evaluate.py` and code generation metrics
 
 ## Architecture Insights
 - High-level module: Strategic planning with fewer cycles

@@ -357,13 +357,13 @@ class CodeSpecificSparseEmbedding(CastedSparseEmbedding):
         self.num_tasks = num_tasks
         
         # Language-specific puzzle embeddings
-        self.language_puzzle_weights = nn.Buffer(
+        self.register_buffer("language_puzzle_weights", 
             trunc_normal_init_(torch.empty((num_languages, embedding_dim)), std=init_std), 
             persistent=True
         )
         
         # Task-specific puzzle embeddings
-        self.task_puzzle_weights = nn.Buffer(
+        self.register_buffer("task_puzzle_weights", 
             trunc_normal_init_(torch.empty((num_tasks, embedding_dim)), std=init_std), 
             persistent=True
         )

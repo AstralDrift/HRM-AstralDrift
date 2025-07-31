@@ -20,6 +20,7 @@ from torch.utils.data import Dataset
 import numpy as np
 from transformers import AutoTokenizer
 import pydantic
+from torch.utils.data import ConcatDataset
 
 
 class CodeGenerationDatasetConfig(pydantic.BaseModel):
@@ -227,6 +228,10 @@ def create_code_generation_dataloader(
 ) -> torch.utils.data.DataLoader:
     """Create a dataloader for code generation dataset"""
     
+    # Handle mixed training mode
+    if config.dataset_path == 'mixed':
+        return create_mixed_dataloader(batch_size, shuffle, num_workers)
+    
     dataset = CodeGenerationDataset(config)
     
     dataloader = torch.utils.data.DataLoader(
@@ -239,6 +244,85 @@ def create_code_generation_dataloader(
     )
     
     return dataloader, dataset.get_metadata()
+
+
+def create_mixed_dataloader(
+    batch_size: int,
+    shuffle: bool = True,
+    num_workers: int = 0
+) -> Tuple[torch.utils.data.DataLoader, CodeGenerationDatasetMetadata]:
+    """Create a mixed dataloader combining LiveCodeBench and SWE-Smith-1k"""
+    
+    # Create datasets for both sources
+    lcb_config = CodeGenerationDatasetConfig(
+        dataset_path='data/livecodebench_real/livecodebench_real.json',
+        tokenizer_name="microsoft/CodeBERT-base",
+        max_input_length=1024,
+        max_output_length=512
+    )
+    
+    swe_config = CodeGenerationDatasetConfig(
+        dataset_path='data/swe-smith-1k',
+        tokenizer_name="microsoft/CodeBERT-base", 
+        max_input_length=1024,
+        max_output_length=512
+    )
+    
+    try:
+        lcb_dataset = CodeGenerationDataset(lcb_config)
+        print(f"✅ Loaded LiveCodeBench: {len(lcb_dataset)} instances")
+    except Exception as e:
+        print(f"⚠️ Failed to load LiveCodeBench: {e}")
+        lcb_dataset = None
+    
+    try:
+        swe_dataset = CodeGenerationDataset(swe_config)
+        print(f"✅ Loaded SWE-Smith-1k: {len(swe_dataset)} instances")
+    except Exception as e:
+        print(f"⚠️ Failed to load SWE-Smith-1k: {e}")
+        swe_dataset = None
+    
+    # Combine available datasets
+    datasets = [d for d in [lcb_dataset, swe_dataset] if d is not None]
+    
+    if not datasets:
+        raise ValueError("No datasets could be loaded for mixed training")
+    elif len(datasets) == 1:
+        print(f"ℹ️ Mixed training with only one dataset available")
+        combined_dataset = datasets[0]
+        metadata = datasets[0].get_metadata()
+    else:
+        print(f"🔄 Mixed training with {len(datasets)} datasets")
+        combined_dataset = ConcatDataset(datasets)
+        
+        # Combine metadata from all datasets
+        metadatas = [d.get_metadata() for d in datasets]
+        metadata = CodeGenerationDatasetMetadata(
+            vocab_size=metadatas[0].vocab_size,
+            pad_token_id=metadatas[0].pad_token_id,
+            ignore_label_id=metadatas[0].ignore_label_id,
+            max_input_length=max(m.max_input_length for m in metadatas),
+            max_output_length=max(m.max_output_length for m in metadatas),
+            num_instances=sum(m.num_instances for m in metadatas),
+            num_domains=sum(m.num_domains for m in metadatas),
+            num_languages=max(m.num_languages for m in metadatas),
+            average_complexity=sum(m.average_complexity * m.num_instances for m in metadatas) / sum(m.num_instances for m in metadatas)
+        )
+    
+    dataloader = torch.utils.data.DataLoader(
+        combined_dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+        pin_memory=True,
+        drop_last=True
+    )
+    
+    # Add tokenizer attribute for compatibility
+    if hasattr(datasets[0], 'tokenizer'):
+        dataloader.dataset.tokenizer = datasets[0].tokenizer
+    
+    return dataloader, metadata
 
 
 # Test functionality

@@ -109,10 +109,7 @@ python dataset/build_maze_dataset.py  # 1000 examples
 
 ### Dataset Visualization
 
-Explore the puzzles visually:
-
-* Open `puzzle_visualizer.html` in your browser.
-* Upload the generated dataset folder located in `data/...`.
+Explore the code generation datasets through the evaluation scripts and wandb logging.
 
 ## Launch experiments
 

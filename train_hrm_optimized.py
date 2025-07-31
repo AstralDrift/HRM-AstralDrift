@@ -22,7 +22,13 @@ from typing import Dict, Any, Optional, List
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-import wandb
+from torch.cuda.amp import GradScaler, autocast
+try:
+    import wandb
+    WANDB_AVAILABLE = True
+except ImportError:
+    WANDB_AVAILABLE = False
+    print("⚠️  wandb not available - training will continue without logging")
 from tqdm import tqdm
 import numpy as np
 
@@ -30,9 +36,17 @@ import numpy as np
 sys.path.append(str(Path(__file__).parent))
 
 from code_generation_dataset import CodeGenerationDataset, CodeGenerationDatasetConfig, create_code_generation_dataloader
+from mixed_dataset_loader import MixedCodeGenerationDataset, MixedDatasetConfig, create_mixed_dataloader
+
+# Model configuration constants
+MODEL_SEQ_LEN = 1024  # 512 input + 512 output
 from models.hrm.hrm_act_v1 import HierarchicalReasoningModel_ACTV1, HierarchicalReasoningModel_ACTV1Config
 from models.losses import ACTSWESearchLossHead
 from utils.device import get_device
+from utils.error_handling import (
+    robust_error_handler, ErrorRecoveryManager, safe_save_checkpoint,
+    create_error_report, validate_dataset_path, TrainingError, MemoryError
+)
 
 
 class OptimizedCodeGenerationTrainer:
@@ -45,32 +59,80 @@ class OptimizedCodeGenerationTrainer:
         # Setup logging
         self._setup_logging()
         
+        # Initialize error recovery manager
+        self.error_manager = ErrorRecoveryManager(
+            logger=self.logger,
+            max_retries=3
+        )
+        
         self.logger.info(f"🚀 Initializing Optimized HRM Code Generation Trainer")
         self.logger.info(f"   Device: {self.device}")
         self.logger.info(f"   Dataset: {config['data_path']}")
         
-        # Initialize dataset with MPS-optimized settings
-        self.dataset_config = CodeGenerationDatasetConfig(
-            dataset_path=config['data_path'],
-            max_input_length=512,
-            max_output_length=512,
-            include_coordination_data=True,
-            include_metadata=True
-        )
+        try:
+            self._validate_config()
+        except Exception as e:
+            raise TrainingError(f"Invalid training configuration: {e}") from e
         
-        # Create dataloaders with device-specific optimizations
-        pin_memory = self.device == 'cuda'  # Only use pin_memory for CUDA
-        num_workers = 0 if self.device == 'mps' else 2  # MPS works better with single-threaded
-        
-        self.train_loader, self.dataset_metadata = create_code_generation_dataloader(
-            self.dataset_config,
-            batch_size=config['batch_size'],
-            shuffle=True,
-            num_workers=num_workers
-        )
-        
-        # Update dataloader to fix MPS issues
-        self.train_loader.pin_memory = pin_memory
+        # Initialize dataset - support both single and mixed datasets
+        if config['data_path'] == 'mixed':
+            # Mixed dataset configuration
+            self.mixed_config = MixedDatasetConfig(
+                swe_smith_path="data/swe-smith-1k",
+                livecodebench_path="data/livecodebench_real",
+                swe_smith_ratio=0.7,  # 70% SWE-Smith
+                livecodebench_ratio=0.3,  # 30% LiveCodeBench
+                max_input_length=512,
+                max_output_length=512,
+                batch_size=config['batch_size'],
+                validation_split=0.1,
+                shuffle=True
+            )
+            
+            self.train_loader = create_mixed_dataloader(self.mixed_config, "train", MODEL_SEQ_LEN)
+            self.val_loader = create_mixed_dataloader(self.mixed_config, "validation", MODEL_SEQ_LEN)
+            
+            # Create dummy metadata for compatibility
+            from types import SimpleNamespace
+            self.dataset_metadata = SimpleNamespace(
+                num_instances=len(self.train_loader.dataset),
+                vocab_size=self.train_loader.dataset.tokenizer.vocab_size,
+                num_domains=5,  # Mixed domains
+                num_languages=1,  # Mostly Python
+                average_complexity=0.7,  # Mixed complexity
+                pad_token_id=self.train_loader.dataset.tokenizer.pad_token_id
+            )
+            
+            self.logger.info(f"🔄 Using mixed dataset mode")
+            self.logger.info(f"   Train instances: {len(self.train_loader.dataset)}")
+            self.logger.info(f"   Validation instances: {len(self.val_loader.dataset)}")
+            
+        else:
+            # Single dataset configuration
+            self.dataset_config = CodeGenerationDatasetConfig(
+                dataset_path=config['data_path'],
+                max_input_length=512,
+                max_output_length=512,
+                include_coordination_data=True,
+                include_metadata=True
+            )
+            
+            # Create dataloaders with device-specific optimizations
+            pin_memory = self.device == 'cuda'  # Only use pin_memory for CUDA
+            num_workers = 0 if self.device == 'mps' else 2  # MPS works better with single-threaded
+            
+            self.train_loader, self.dataset_metadata = create_code_generation_dataloader(
+                self.dataset_config,
+                batch_size=config['batch_size'],
+                shuffle=True,
+                num_workers=num_workers
+            )
+            
+            # Update dataloader to fix MPS issues
+            self.train_loader.pin_memory = pin_memory
+            self.val_loader = None  # No validation for single dataset mode
+            
+            self.logger.info(f"📝 Using single dataset mode: {config['data_path']}")
         
         self.logger.info(f"   Loaded {self.dataset_metadata.num_instances} instances")
         self.logger.info(f"   Vocab size: {self.dataset_metadata.vocab_size}")
@@ -79,7 +141,7 @@ class OptimizedCodeGenerationTrainer:
         self.logger.info(f"   Avg complexity: {self.dataset_metadata.average_complexity:.3f}")
         
         # Initialize model
-        self.model = self._create_model()
+        self.model = self._create_model_safely()
         self.model = self.model.to(self.device)
         
         # Count parameters
@@ -110,9 +172,18 @@ class OptimizedCodeGenerationTrainer:
             weight_decay=config.get('weight_decay', 0.1),
             eps=1e-8
         )
+        # Initialize mixed precision scaler
+        self.use_mixed_precision = self.config.get('mixed_precision', True) and (
+            self.device == 'cuda' or 
+            (self.device == 'mps' and torch.__version__ >= '2.0')
+        )
         
-        # Mixed precision scaler for FlashAttention compatibility
-        self.scaler = torch.cuda.amp.GradScaler() if self.device == 'cuda' else None
+        if self.use_mixed_precision:
+            self.scaler = GradScaler()
+            self.logger.info("✅ Mixed precision training enabled")
+        else:
+            self.scaler = None
+            self.logger.info("⚠️  Mixed precision training disabled (device compatibility)")
         
         # Learning rate scheduler
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
@@ -148,13 +219,47 @@ class OptimizedCodeGenerationTrainer:
         )
         self.logger = logging.getLogger('HRMTrainer')
     
+    def _validate_config(self) -> None:
+        """Validate training configuration"""
+        required_keys = ['data_path', 'epochs', 'batch_size', 'learning_rate']
+        missing_keys = [key for key in required_keys if key not in self.config]
+        
+        if missing_keys:
+            raise TrainingError(f"Missing required config keys: {missing_keys}")
+        
+        # Validate data path
+        if self.config['data_path'] != 'mixed':
+            validate_dataset_path(self.config['data_path'])
+        
+        # Validate numeric values
+        if self.config['batch_size'] <= 0:
+            raise TrainingError(f"batch_size must be positive, got {self.config['batch_size']}")
+        
+        if self.config['epochs'] <= 0:
+            raise TrainingError(f"epochs must be positive, got {self.config['epochs']}")
+        
+        if self.config['learning_rate'] <= 0:
+            raise TrainingError(f"learning_rate must be positive, got {self.config['learning_rate']}")
+    
+    @robust_error_handler(max_retries=2)
+    def _create_model_safely(self) -> nn.Module:
+        """Create model with error handling"""
+        try:
+            self.error_manager.log_system_state()
+            model = self._create_model()
+            self.logger.info("✅ Model created successfully")
+            return model
+        except Exception as e:
+            self.error_manager.record_error(e, {'operation': 'model_creation'})
+            raise TrainingError(f"Failed to create model: {e}") from e
+    
     def _create_model(self) -> nn.Module:
         """Create HRM model with optimized configuration"""
         
         model_config = HierarchicalReasoningModel_ACTV1Config(
             # Dataset-specific config
             vocab_size=self.dataset_metadata.vocab_size,
-            seq_len=1024,  # 512 input + 512 output
+            seq_len=MODEL_SEQ_LEN,  # 512 input + 512 output
             batch_size=self.config['batch_size'],
             
             # Optimized architecture for faster training
@@ -168,6 +273,11 @@ class OptimizedCodeGenerationTrainer:
             # Code generation specific
             enable_swe_search=True,
             enable_reverse_learning=True,
+            
+            # Memory optimization features
+            gradient_checkpointing=self.config.get('gradient_checkpointing', True),
+            mixed_precision=self.config.get('mixed_precision', True),
+            memory_efficient_attention=self.config.get('memory_efficient_attention', True),
             
             # ACT settings optimized for halting (FIXED)
             halt_max_steps=self.config.get('halt_max_steps', 6),  # Reduced from 16
@@ -188,12 +298,16 @@ class OptimizedCodeGenerationTrainer:
     
     def _init_wandb(self):
         """Initialize Weights & Biases logging"""
-        wandb.init(
-            project=self.config.get('project_name', 'hrm-code-generation'),
-            name=self.config.get('run_name', f'optimized-run-{int(time.time())}'),
-            config=self.config,
-            mode=self.config.get('wandb_mode', 'online')
-        )
+        if WANDB_AVAILABLE and self.config.get('use_wandb', False):
+            wandb.init(
+                project=self.config.get('project_name', 'hrm-code-generation'),
+                name=self.config.get('run_name', f'optimized-run-{int(time.time())}'),
+                config=self.config,
+                mode=self.config.get('wandb_mode', 'online')
+            )
+            self.logger.info("✅ W&B logging initialized")
+        else:
+            self.logger.info("⚠️  W&B logging disabled")
     
     def train_epoch(self) -> Dict[str, float]:
         """Train for one epoch with enhanced monitoring"""
@@ -221,19 +335,20 @@ class OptimizedCodeGenerationTrainer:
             # Initialize carry state
             carry = self.loss_fn.initial_carry(batch)
             
-            # Forward pass with gradient accumulation support
+            # Forward pass with mixed precision support
             self.optimizer.zero_grad()
             
             try:
-                # Use mixed precision for forward pass
-                if self.scaler:
-                    with torch.cuda.amp.autocast():
+                if self.use_mixed_precision:
+                    # Mixed precision forward pass
+                    with autocast():
                         new_carry, loss, metrics, outputs, all_halted = self.loss_fn(
                             return_keys=['logits'],
                             carry=carry,
                             batch=batch
                         )
                 else:
+                    # Standard precision forward pass
                     new_carry, loss, metrics, outputs, all_halted = self.loss_fn(
                         return_keys=['logits'],
                         carry=carry,
@@ -245,8 +360,8 @@ class OptimizedCodeGenerationTrainer:
                     self.logger.warning(f"NaN/Inf loss detected at step {self.global_step}, skipping batch")
                     continue
                 
-                # Backward pass with mixed precision
-                if self.scaler:
+                # Backward pass with mixed precision support
+                if self.use_mixed_precision:
                     self.scaler.scale(loss).backward()
                     self.scaler.unscale_(self.optimizer)
                     grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
@@ -299,7 +414,8 @@ class OptimizedCodeGenerationTrainer:
                     for key, value in metrics.items():
                         log_dict[f'train/{key}'] = value.item() if torch.is_tensor(value) else value
                     
-                    wandb.log(log_dict)
+                    if WANDB_AVAILABLE and self.config.get('use_wandb', False):
+                        wandb.log(log_dict)
                 
                 # Early stopping check for debugging
                 max_batches = self.config.get('max_batches_per_epoch', None)
@@ -327,29 +443,47 @@ class OptimizedCodeGenerationTrainer:
         return epoch_results
     
     def save_checkpoint(self, path: str, additional_info: Dict = None):
-        """Save model checkpoint with additional monitoring info"""
-        checkpoint = {
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'scheduler_state_dict': self.scheduler.state_dict(),
+        """Save model checkpoint with error handling and additional monitoring info"""
+        checkpoint_metadata = {
             'config': self.config,
             'epoch': self.epoch,
             'global_step': self.global_step,
             'best_loss': self.best_loss,
             'training_history': self.training_history,
-            'dataset_metadata': self.dataset_metadata.__dict__
+            'system_stats': self.error_manager.system_stats,
+            'dataset_metadata': self.dataset_metadata.__dict__,
+            **(additional_info or {})
         }
         
-        if additional_info:
-            checkpoint.update(additional_info)
+        success = safe_save_checkpoint(
+            model=self.model,
+            optimizer=self.optimizer,
+            checkpoint_path=Path(path),
+            metadata=checkpoint_metadata
+        )
         
-        torch.save(checkpoint, path)
-        self.logger.info(f"✅ Checkpoint saved: {path}")
+        if success:
+            self.logger.info(f"✅ Checkpoint saved: {path}")
+        else:
+            self.logger.error(f"❌ Failed to save checkpoint: {path}")
+            raise TrainingError(f"Checkpoint save failed: {path}")
     
+    @robust_error_handler(max_retries=1)
     def train(self):
-        """Main training loop with enhanced monitoring"""
+        """Main training loop with enhanced monitoring and error handling"""
         
         self.logger.info(f"\n🎯 Starting Optimized HRM Code Generation Training")
+        
+        try:
+            return self._train_with_error_handling()
+        except Exception as e:
+            # Create error report
+            error_report_path = Path("training_error_report.json")
+            create_error_report(self.error_manager, error_report_path)
+            self.logger.error(f"Training failed. Error report saved to: {error_report_path}")
+            raise
+    
+    def _train_with_error_handling(self):
         self.logger.info(f"   Epochs: {self.config['epochs']}")
         self.logger.info(f"   Batch size: {self.config['batch_size']}")
         self.logger.info(f"   Learning rate: {self.config['learning_rate']}")
@@ -451,11 +585,23 @@ def main():
     
     args = parser.parse_args()
     
-    # Configuration - Check for real LiveCodeBench dataset
+    # Configuration - Dataset selection logic
     real_lcb_path = 'data/livecodebench_real/livecodebench_real.json'
-    if os.path.exists(real_lcb_path):
+    swe_smith_path = 'data/swe-smith-1k'
+    
+    if args.data_path == 'mixed':
+        # Mixed training mode - combine both datasets
+        if os.path.exists(real_lcb_path) and os.path.exists(swe_smith_path):
+            data_path = 'mixed'
+            print(f"🔄 Using mixed training: LiveCodeBench + SWE-Smith-1k")
+        else:
+            # Fallback to available dataset
+            data_path = real_lcb_path if os.path.exists(real_lcb_path) else swe_smith_path
+            print(f"⚠️ Mixed mode requested but datasets missing, using: {data_path}")
+    elif os.path.exists(real_lcb_path) and args.data_path == 'data/swe-smith-1k':
+        # Auto-upgrade to real LiveCodeBench if available
         data_path = real_lcb_path
-        print(f"🔥 Using real LiveCodeBench dataset: {real_lcb_path}")
+        print(f"🔥 Auto-upgraded to real LiveCodeBench dataset: {real_lcb_path}")
     else:
         data_path = args.data_path
         print(f"📝 Using dataset: {data_path}")
@@ -470,13 +616,16 @@ def main():
         'run_name': args.run_name or f'hrm-optimized-{int(time.time())}',
         'project_name': 'HRM-Code-Generation-Optimized',
         'checkpoint_interval': 10,
-        'weight_decay': 0.1,
-        'swe_search_weight': 0.2,  # Reduced for faster training
-        'reverse_learning_weight': 0.1,
+        'weight_decay': 0.2,  # Optimized weight decay
+        'swe_search_weight': 0.3,  # Increased for better search behavior
+        'reverse_learning_weight': 0.2,  # Enhanced reverse learning
         'H_cycles': 1,            # FIXED: Reduced for halting
-        'L_cycles': 2,            # FIXED: Reduced for halting
+        'L_cycles': 2,            # FIXED: Reduced for halting  
         'halt_max_steps': 6,      # FIXED: Reduced for halting
-        'halt_exploration_prob': 0.4,  # FIXED: Increased for halting
+        'halt_exploration_prob': 0.5,  # Optimized exploration
+        'swe_candidates': 15,     # SWE-Search candidate count
+        'enable_swe_search': True,  # Enable SWE-Search features
+        'enable_reverse_learning': True,  # Enable reverse learning
         'scheduler_t0': 50,
         'max_batches_per_epoch': args.max_batches_per_epoch
     }

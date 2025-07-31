@@ -1,15 +1,21 @@
 from typing import Tuple, List, Dict, Optional
 from dataclasses import dataclass
 import math
+import logging
 
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.utils.checkpoint import checkpoint
 from pydantic import BaseModel
 
 from models.common import trunc_normal_init_
 from models.layers import rms_norm, SwiGLU, Attention, RotaryEmbedding, CosSin, CastedEmbedding, CastedLinear
 from models.sparse_embedding import CastedSparseEmbedding
+from utils.error_handling import (
+    robust_error_handler, validate_model_config, check_device_compatibility,
+    ModelInitializationError, DeviceError
+)
 
 
 @dataclass
@@ -56,6 +62,11 @@ class HierarchicalReasoningModel_ACTV1Config(BaseModel):
 
     forward_dtype: str = "bfloat16"
     
+    # Memory optimization
+    gradient_checkpointing: bool = False
+    mixed_precision: bool = True
+    memory_efficient_attention: bool = True
+    
     # SWE-Search Integration
     enable_swe_search: bool = False
     swe_search_iterations: int = 3
@@ -76,6 +87,7 @@ class HierarchicalReasoningModel_ACTV1Config(BaseModel):
 class HierarchicalReasoningModel_ACTV1Block(nn.Module):
     def __init__(self, config: HierarchicalReasoningModel_ACTV1Config) -> None:
         super().__init__()
+        self.config = config
 
         self.self_attn = Attention(
             hidden_size=config.hidden_size,
@@ -90,13 +102,21 @@ class HierarchicalReasoningModel_ACTV1Block(nn.Module):
         )
         self.norm_eps = config.rms_norm_eps
 
-    def forward(self, cos_sin: CosSin, hidden_states: torch.Tensor) -> torch.Tensor:
+    def _forward_impl(self, cos_sin: CosSin, hidden_states: torch.Tensor) -> torch.Tensor:
+        """Internal forward implementation for gradient checkpointing"""
         # Post Norm
         # Self Attention
         hidden_states = rms_norm(hidden_states + self.self_attn(cos_sin=cos_sin, hidden_states=hidden_states), variance_epsilon=self.norm_eps)
         # Fully Connected
         hidden_states = rms_norm(hidden_states + self.mlp(hidden_states), variance_epsilon=self.norm_eps)
         return hidden_states
+
+    def forward(self, cos_sin: CosSin, hidden_states: torch.Tensor) -> torch.Tensor:
+        if self.config.gradient_checkpointing and self.training:
+            # Use gradient checkpointing to save memory
+            return checkpoint(self._forward_impl, cos_sin, hidden_states, use_reentrant=False)
+        else:
+            return self._forward_impl(cos_sin, hidden_states)
 
 
 class HierarchicalReasoningModel_ACTV1ReasoningModule(nn.Module):
@@ -116,10 +136,34 @@ class HierarchicalReasoningModel_ACTV1ReasoningModule(nn.Module):
 
 
 class HierarchicalReasoningModel_ACTV1_Inner(nn.Module):
+    @robust_error_handler(max_retries=2)
     def __init__(self, config: HierarchicalReasoningModel_ACTV1Config) -> None:
         super().__init__()
-        self.config = config
-        self.forward_dtype = getattr(torch, self.config.forward_dtype)
+        
+        try:
+            # Validate configuration first
+            validate_model_config(config)
+            self.config = config
+            
+            # Handle dtype compatibility (BFloat16 not supported on MPS)
+            from models.common import get_optimal_device
+            device = get_optimal_device()
+            
+            # Convert string device to torch.device if needed
+            if isinstance(device, str):
+                device = torch.device(device)
+            
+            if self.config.forward_dtype == "bfloat16" and device.type == "mps":
+                logging.warning("⚠️  BFloat16 not supported on MPS, falling back to float16")
+                self.forward_dtype = torch.float16
+            else:
+                self.forward_dtype = getattr(torch, self.config.forward_dtype)
+            
+            # Check device compatibility
+            check_device_compatibility(device, self.forward_dtype)
+            
+        except Exception as e:
+            raise ModelInitializationError(f"Failed to initialize model configuration: {e}") from e
 
         # I/O
         self.embed_scale  = math.sqrt(self.config.hidden_size)
@@ -136,14 +180,15 @@ class HierarchicalReasoningModel_ACTV1_Inner(nn.Module):
                                                     batch_size=self.config.batch_size, init_std=0, cast_to=self.forward_dtype)
 
         # LM Blocks
-        if self.config.pos_encodings == "rope":
+        if self.config.pos_encodings in ["rope", "rotary"]:
             self.rotary_emb = RotaryEmbedding(dim=self.config.hidden_size // self.config.num_heads,
                                               max_position_embeddings=self.config.seq_len + self.puzzle_emb_len,
                                               base=self.config.rope_theta)
         elif self.config.pos_encodings == "learned":
             self.embed_pos = CastedEmbedding(self.config.seq_len + self.puzzle_emb_len, self.config.hidden_size, init_std=embed_init_std, cast_to=self.forward_dtype)
         else:
-            raise NotImplementedError()
+            supported_encodings = ["rope", "rotary", "learned"]
+            raise ValueError(f"Unsupported positional encoding '{self.config.pos_encodings}'. Supported options: {supported_encodings}")
 
         # Reasoning Layers
         self.H_level = HierarchicalReasoningModel_ACTV1ReasoningModule(layers=[HierarchicalReasoningModel_ACTV1Block(self.config) for _i in range(self.config.H_layers)])
@@ -153,8 +198,8 @@ class HierarchicalReasoningModel_ACTV1_Inner(nn.Module):
         # Use optimal device detection
         from models.common import get_optimal_device
         device = get_optimal_device()
-        self.H_init = nn.Buffer(trunc_normal_init_(torch.empty(self.config.hidden_size, dtype=self.forward_dtype, device=device), std=1), persistent=True)
-        self.L_init = nn.Buffer(trunc_normal_init_(torch.empty(self.config.hidden_size, dtype=self.forward_dtype, device=device), std=1), persistent=True)
+        self.register_buffer("H_init", trunc_normal_init_(torch.empty(self.config.hidden_size, dtype=self.forward_dtype, device=device), std=1), persistent=True)
+        self.register_buffer("L_init", trunc_normal_init_(torch.empty(self.config.hidden_size, dtype=self.forward_dtype, device=device), std=1), persistent=True)
 
         # Q head special init
         # Init Q to (almost) zero for faster learning during bootstrapping
@@ -282,9 +327,15 @@ class HierarchicalReasoningModel_ACTV1_Inner(nn.Module):
 class HierarchicalReasoningModel_ACTV1(nn.Module):
     """ACT wrapper."""
 
-    def __init__(self, config_dict: dict):
+    def __init__(self, config_dict):
         super().__init__()
-        self.config = HierarchicalReasoningModel_ACTV1Config(**config_dict)
+        # Handle both dict and config object inputs
+        if isinstance(config_dict, dict):
+            self.config = HierarchicalReasoningModel_ACTV1Config(**config_dict)
+        elif isinstance(config_dict, HierarchicalReasoningModel_ACTV1Config):
+            self.config = config_dict
+        else:
+            raise TypeError(f"Expected dict or HierarchicalReasoningModel_ACTV1Config, got {type(config_dict)}")
         self.inner = HierarchicalReasoningModel_ACTV1_Inner(self.config)
 
     @property
@@ -334,7 +385,7 @@ class HierarchicalReasoningModel_ACTV1(nn.Module):
             steps=torch.zeros((batch_size, ), dtype=torch.int32, device=device),
             halted=torch.ones((batch_size, ), dtype=torch.bool, device=device),  # Default to halted
             
-            current_data={k: torch.empty_like(v) for k, v in batch.items()}
+            current_data={k: torch.empty_like(v) if torch.is_tensor(v) else v for k, v in batch.items()}
         )
         
     def forward(self, carry: HierarchicalReasoningModel_ACTV1Carry, batch: Dict[str, torch.Tensor]) -> Tuple[HierarchicalReasoningModel_ACTV1Carry, Dict[str, torch.Tensor]]:
@@ -343,7 +394,7 @@ class HierarchicalReasoningModel_ACTV1(nn.Module):
         
         new_steps = torch.where(carry.halted, 0, carry.steps)
 
-        new_current_data = {k: torch.where(carry.halted.view((-1, ) + (1, ) * (batch[k].ndim - 1)), batch[k], v) for k, v in carry.current_data.items()}
+        new_current_data = {k: torch.where(carry.halted.view((-1, ) + (1, ) * (batch[k].ndim - 1)), batch[k], v) for k, v in carry.current_data.items() if hasattr(batch[k], 'ndim')}
 
         # Forward inner model
         new_inner_carry, logits, (q_halt_logits, q_continue_logits) = self.inner(new_inner_carry, new_current_data)

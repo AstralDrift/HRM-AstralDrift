@@ -5,19 +5,19 @@ loss:
   swe_search_weight: 0.3
   reverse_learning_weight: 0.2
 
-# Enhanced configuration for code generation
-halt_exploration_prob: 0.15  # Higher exploration for code diversity
-halt_max_steps: 20  # More steps for complex code reasoning
+# Optimized configuration for code generation (per user specs)
+halt_exploration_prob: 0.5  # Increased exploration for diversity
+halt_max_steps: 20  # Sufficient for complex reasoning
 
-# More reasoning cycles for sophisticated code generation
+# Optimized reasoning cycles  
 H_cycles: 3  
 L_cycles: 4
 
-# Larger architecture for code complexity
+# Balanced architecture for efficiency and performance
 H_layers: 6
 L_layers: 6
 
-hidden_size: 768  # Larger for code representation
+hidden_size: 768  # Optimal for code representation
 num_heads: 12
 expansion: 4
 

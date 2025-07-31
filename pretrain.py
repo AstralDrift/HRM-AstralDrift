@@ -23,7 +23,7 @@ except ImportError:
     print("adam_atan2 not available, using torch.optim.Adam as fallback")
     AdamATan2 = torch.optim.Adam
 
-from puzzle_dataset import PuzzleDataset, PuzzleDatasetConfig, PuzzleDatasetMetadata
+from code_generation_dataset import CodeGenerationDataset, CodeGenerationDatasetConfig
 from utils.functions import load_model_class, get_model_source_path
 from models.sparse_embedding import CastedSparseEmbeddingSignSGD_Distributed
 

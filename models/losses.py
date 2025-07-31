@@ -114,9 +114,8 @@ class ACTSWESearchLossHead(nn.Module):
         self.loss_fn = globals()[loss_type]
         self.swe_search_weight = swe_search_weight
         self.reverse_learning_weight = reverse_learning_weight
-        
-        # Debug flag for logging
-        self._tokenizer_debug = True
+        # Debug flag for logging (reduced verbosity)
+        self._tokenizer_debug = False
         
         # Enhanced tokenizer handling with validation
         self.tokenizer = None
